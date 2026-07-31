@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# C++ / CMake build outputs
+build/
+bin/
+*.o
+*.so
+*.a
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

@@ -1,0 +1,8 @@
+[InputMethod]
+Name=Uniiki
+Icon=fcitx
+Label=VN
+LangCode=vi
+Addon=uniiki
+Configurable=False
+KeyboardLayout=us

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Uniiki Vietnamese Input
+Comment=Bộ gõ tiếng Việt toàn hệ thống không Preedit cho Ubuntu
+Exec=python3 /home/alpenliebe/Desktop/uniiki/main.py
+Icon=input-keyboard
+Terminal=false
+Categories=Utility;InputMethod;

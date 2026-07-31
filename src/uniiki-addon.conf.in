@@ -1,0 +1,8 @@
+[Addon]
+Name=Uniiki Vietnamese Input Method
+Comment=Native C++ Vietnamese Telex Input Method Engine for Fcitx5
+Category=InputMethod
+Type=SharedLibrary
+Library=uniiki
+SubMode=Native
+OnDemand=False
