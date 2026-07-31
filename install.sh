@@ -1,31 +1,65 @@
 #!/bin/bash
 set -e
 
-echo "=== 🇻🇳 Cài đặt Uniiki ==="
+REPO_URL="https://github.com/DatDangg/uniiki.git"
+INSTALL_DIR="$HOME/.uniiki"
+BIN_DIR="$HOME/.local/bin"
 
-# 1. Cài đặt Python dependencies
-if command -v python3 &> /dev/null; then
-    echo "[1/3] Đang cài đặt thư viện Python..."
-    python3 -m pip install -r requirements.txt --break-system-packages 2>/dev/null || python3 -m pip install -r requirements.txt
-else
-    echo "Lỗi: Không tìm thấy Python3!"
+echo "=== 🇻🇳 Đang cài đặt Uniiki (Bộ Gõ Tiếng Việt Ubuntu/Linux) ==="
+
+# 1. Kiểm tra Git & Python3
+if ! command -v git &> /dev/null; then
+    echo "❌ Lỗi: Cần cài đặt git trước (chạy: sudo apt install git)"
     exit 1
 fi
 
-# 2. Thiết lập quyền uinput (cho evdev backend)
-echo "[2/3] Kiểm tra quyền uinput..."
+if ! command -v python3 &> /dev/null; then
+    echo "❌ Lỗi: Không tìm thấy Python3"
+    exit 1
+fi
+
+# 2. Tải hoặc Cập nhật mã nguồn vào ~/.uniiki
+if [ -d "$INSTALL_DIR" ]; then
+    echo "[1/4] Đang cập nhật Uniiki tại $INSTALL_DIR..."
+    git -C "$INSTALL_DIR" pull origin main
+else
+    echo "[1/4] Đang tải mã nguồn Uniiki vào $INSTALL_DIR..."
+    git clone "$REPO_URL" "$INSTALL_DIR"
+fi
+
+# 3. Cài đặt Python Dependencies
+echo "[2/4] Đang cài đặt thư viện Python..."
+python3 -m pip install -r "$INSTALL_DIR/requirements.txt" --break-system-packages 2>/dev/null || python3 -m pip install -r "$INSTALL_DIR/requirements.txt"
+
+# 4. Tạo lệnh 'uniiki' toàn hệ thống (Executable script)
+mkdir -p "$BIN_DIR"
+cat << 'EOF' > "$BIN_DIR/uniiki"
+#!/bin/bash
+python3 "$HOME/.uniiki/main.py" "$@"
+EOF
+chmod +x "$BIN_DIR/uniiki"
+echo "[3/4] Đã tạo lệnh 'uniiki' trong $BIN_DIR"
+
+# 5. Cấp quyền uinput cho evdev backend
 if [ -e /dev/uinput ]; then
     sudo usermod -aG input $USER 2>/dev/null || true
-    echo "Lưu ý: Nếu dùng backend evdev, bạn có thể cần đăng xuất và đăng nhập lại để quyền uinput có hiệu lực."
 fi
 
-# 3. Setup Autostart (tùy chọn)
-read -p "Bạn có muốn tự động chạy Uniiki khi khởi động máy không? (y/N): " choice
-if [[ "$choice" =~ ^[Yy]$ ]]; then
-    mkdir -p ~/.config/autostart
-    cp uniiki.desktop ~/.config/autostart/
-    echo "✅ Đã thêm Uniiki vào Autostart."
-fi
+# 6. Thiết lập Autostart khi đăng nhập Ubuntu
+mkdir -p ~/.config/autostart
+cat << EOF > ~/.config/autostart/uniiki.desktop
+[Desktop Entry]
+Type=Application
+Name=Uniiki
+Exec=python3 $HOME/.uniiki/main.py
+Icon=input-keyboard
+Comment=Bộ gõ tiếng Việt không preedit cho Linux
+Categories=Utility;
+X-GNOME-Autostart-enabled=true
+EOF
+echo "[4/4] Đã thêm Uniiki vào Autostart."
 
-echo "=== ✨ Cài đặt hoàn tất! ==="
-echo "Bạn có thể khởi chạy bằng lệnh: python3 main.py"
+echo ""
+echo "=== ✨ Cài đặt Uniiki hoàn tất! ==="
+echo "📌 Bạn có thể bật bộ gõ bằng lệnh: uniiki"
+echo "📌 Uniiki sẽ tự động chạy cùng hệ thống khi khởi động."

@@ -12,13 +12,16 @@
 
 ---
 
-## 🚀 Hướng dẫn cài đặt & Khởi chạy
+### ⚡ Cài đặt nhanh 1-Click (Khuyên dùng)
+Mở Terminal trên Ubuntu/Linux và chạy duy nhất lệnh này:
+```bash
+curl -fsSL https://raw.githubusercontent.com/DatDangg/uniiki/main/install.sh | bash
+```
+> Lệnh trên sẽ tự động tảiUniiki vào `~/.uniiki`, cài đặt thư viện, tạo lệnh `uniiki` và thiết lập tự chạy khi bật máy!
 
-> Trạng thái hiện tại: backend Python daemon chỉ phù hợp để thử nghiệm engine.
-> Hướng phát triển chính đang chuyển sang Fcitx5 addon trong `fcitx5/`.
-> Xem [docs/fcitx5-migration.md](docs/fcitx5-migration.md).
+---
 
-### 1. Cài đặt các thư viện cần thiết
+### 🛠️ Cài đặt thủ công từ Nguồn (Source)
 Mở Terminal tại thư mục `uniiki` và chạy lệnh:
 ```bash
 pip install -r requirements.txt
