@@ -155,7 +155,20 @@ class UniikiDaemon:
 
         self.pressed_keys.add(key)
 
-        if key in [Key.space, Key.enter, Key.tab, Key.backspace, Key.left, Key.right, Key.up, Key.down, Key.esc]:
+        if key == Key.backspace:
+            if self.engine.raw_keys:
+                action, backspace_count, text_to_insert = self.engine.process_backspace()
+                if action == 'MODIFY':
+                    threading.Thread(
+                        target=self._inject_replacement_pynput,
+                        args=(backspace_count, text_to_insert),
+                        daemon=True
+                    ).start()
+                    return
+            self.engine.reset_buffer()
+            return
+
+        if key in [Key.space, Key.enter, Key.tab, Key.left, Key.right, Key.up, Key.down, Key.esc]:
             self.engine.reset_buffer()
             return
 
@@ -278,7 +291,18 @@ class UniikiDaemon:
                         continue
 
                     if state == 1:
-                        if code in [ecodes.KEY_SPACE, ecodes.KEY_ENTER, ecodes.KEY_TAB, ecodes.KEY_BACKSPACE, ecodes.KEY_ESC]:
+                        if code == ecodes.KEY_BACKSPACE:
+                            if self.engine.raw_keys:
+                                action, bcount, text_to_insert = self.engine.process_backspace()
+                                if action == 'MODIFY':
+                                    self.consumed_codes.add(code)
+                                    self._evdev_inject_replacement(bcount, text_to_insert)
+                                    continue
+                            self.engine.reset_buffer()
+                            self._forward_event(event)
+                            continue
+
+                        if code in [ecodes.KEY_SPACE, ecodes.KEY_ENTER, ecodes.KEY_TAB, ecodes.KEY_ESC]:
                             self.engine.reset_buffer()
                             self._forward_event(event)
                             continue

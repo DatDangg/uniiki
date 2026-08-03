@@ -101,6 +101,93 @@ class VietnameseEngine:
             self.raw_keys.append(char)
             return ('APPEND', 0, char)
 
+    def process_backspace(self):
+        if not self.raw_keys:
+            return ('FORWARD', 0, '')
+
+        current_word = self.get_current_word()
+        self.raw_keys.pop()
+        new_word = self.get_current_word()
+
+        if new_word != current_word:
+            prefix_len = 0
+            min_len = min(len(current_word), len(new_word))
+            while prefix_len < min_len and current_word[prefix_len] == new_word[prefix_len]:
+                prefix_len += 1
+
+            backspace_count = len(current_word) - prefix_len
+            insert_str = new_word[prefix_len:]
+            return ('MODIFY', backspace_count, insert_str)
+        else:
+            return ('MODIFY', 0, '')
+
+    def _evaluate_raw_escaped(self, keys):
+        if not keys:
+            return ""
+
+        escaped_set = {'d', 'w', 'a', 'e', 'o', 's', 'f', 'r', 'x', 'j', 'z'}
+        res = []
+        i = 0
+        n = len(keys)
+        while i < n:
+            k = keys[i]
+            lk = k.lower()
+            if i + 1 < n and lk in escaped_set and keys[i + 1].lower() == lk:
+                res.append(k)
+                i += 2
+            else:
+                res.append(k)
+                i += 1
+        return "".join(res)
+
+    def _is_valid_initial_cluster(self, chars):
+        if not chars:
+            return True
+        vowel_idx = None
+        for idx, ch in enumerate(chars):
+            if ch in VN_VOWELS or ch in CHAR_DECOMPOSE:
+                base, hat, tone = CHAR_DECOMPOSE.get(ch, (ch, 0, 0))
+                if hat != 'stroke':
+                    vowel_idx = idx
+                    break
+
+        if vowel_idx is None:
+            initial = "".join(chars)
+        else:
+            initial = "".join(chars[:vowel_idx])
+
+        normalized = []
+        for c in initial:
+            if c in ['đ', 'Đ']:
+                normalized.append('d')
+            else:
+                normalized.append(c.lower())
+        initial_str = "".join(normalized)
+        return initial_str in VN_VALID_INITIALS
+
+    def _transform_vowel_hook(self, char):
+        hook_map = {
+            'u': 'ư', 'U': 'Ư',
+            'ú': 'ứ', 'Ú': 'Ứ',
+            'ù': 'ừ', 'Ù': 'Ừ',
+            'ủ': 'ử', 'Ủ': 'Ử',
+            'ũ': 'ữ', 'Ũ': 'Ữ',
+            'ụ': 'ự', 'Ụ': 'Ự',
+            'o': 'ơ', 'O': 'Ơ',
+            'ó': 'ớ', 'Ó': 'Ớ',
+            'ò': 'ờ', 'Ò': 'Ờ',
+            'ỏ': 'ở', 'Ỏ': 'Ở',
+            'õ': 'ỡ', 'Õ': 'Ỡ',
+            'ọ': 'ợ', 'Ọ': 'Ợ',
+            'a': 'ă', 'A': 'Ă',
+            'á': 'ắ', 'Á': 'Ắ',
+            'à': 'ằ', 'À': 'Ằ',
+            'ả': 'ẳ', 'Ả': 'Ẳ',
+            'ã': 'ẵ', 'Ã': 'Ẵ',
+            'ạ': 'ặ', 'Ạ': 'Ặ',
+        }
+        return hook_map.get(char, char)
+
     def _process_telex(self, char):
         current_word = self.get_current_word()
         
@@ -375,7 +462,7 @@ class VietnameseEngine:
                     i += 1
                     continue
 
-            # 3. 'w' hooks: aw -> ă, ow -> ơ, uw -> ư, uow -> ươ
+            # 3. 'w' hooks: aw -> ă, ow -> ơ, uw -> ư, uow -> ươ, uocw -> ước, etc.
             if lk == 'w':
                 if w_modifier is not None:
                     if w_modifier['generated']:
@@ -395,16 +482,35 @@ class VietnameseEngine:
                     i += 1
                     continue
 
-                word_so_far = "".join(res_chars)
-                if word_so_far.lower().endswith('uo'):
-                    changes = [(len(res_chars) - 2, res_chars[-2]),
-                               (len(res_chars) - 1, res_chars[-1])]
-                    res_chars[-2] = 'Ư' if res_chars[-2].isupper() else 'ư'
-                    res_chars[-1] = 'Ơ' if res_chars[-1].isupper() else 'ơ'
+                # Check if res_chars contains 'uo' sequence (with optional coda/tones)
+                u_idx = None
+                o_idx = None
+                for idx in range(len(res_chars) - 1, -1, -1):
+                    ch = res_chars[idx]
+                    ch_base, _hat, _tone = CHAR_DECOMPOSE.get(ch, (ch, 0, 0))
+                    if ch_base.lower() in ['o', 'ơ']:
+                        o_idx = idx
+                    elif ch_base.lower() in ['u', 'ư'] and o_idx is not None:
+                        # Ensure u and o are adjacent or separated only by non-vowel modifiers
+                        if idx == o_idx - 1 or all(res_chars[k] not in VN_VOWELS and res_chars[k] not in CHAR_DECOMPOSE for k in range(idx + 1, o_idx)):
+                            u_idx = idx
+                            break
+                        else:
+                            o_idx = None
+
+                if u_idx is not None and o_idx is not None:
+                    u_char = res_chars[u_idx]
+                    o_char = res_chars[o_idx]
+                    changes = [(u_idx, u_char), (o_idx, o_char)]
+
+                    res_chars[u_idx] = self._transform_vowel_hook(u_char)
+                    res_chars[o_idx] = self._transform_vowel_hook(o_char)
                     w_modifier = {'key': k, 'changes': changes, 'generated': False}
                     i += 1
                     continue
-                elif word_so_far.lower().endswith('ua'):
+
+                word_so_far = "".join(res_chars)
+                if word_so_far.lower().endswith('ua'):
                     changes = [(len(res_chars) - 2, res_chars[-2]),
                                (len(res_chars) - 1, res_chars[-1])]
                     res_chars[-2] = 'Ư' if res_chars[-2].isupper() else 'ư'
@@ -448,6 +554,7 @@ class VietnameseEngine:
                     continue
                 if i + 1 < n and keys[i + 1].lower() == 'w':
                     res_chars.append(k)
+                    w_escaped = True
                     i += 2
                     continue
 
@@ -456,7 +563,13 @@ class VietnameseEngine:
 
             has_future_vowel = any(c in 'aeiouyAEIOUY' for c in keys[i+1:])
 
-            if (lk in TELEX_TONE_KEYS or lk == 'z') and (has_vowel_already or (res_chars and has_future_vowel)):
+            if (lk in TELEX_TONE_KEYS or lk == 'z') and not has_vowel_already and i + 1 < n and keys[i + 1].lower() == lk:
+                res_chars.append(k)
+                w_escaped = True
+                i += 2
+                continue
+
+            if (lk in TELEX_TONE_KEYS or lk == 'z') and (has_vowel_already or (res_chars and has_future_vowel)) and self._is_valid_initial_cluster(res_chars):
                 tail = "".join(res_chars).lower() + lk
                 if not has_vowel_already and any(cluster.startswith(tail) for cluster in VN_INITIAL_CLUSTERS):
                     res_chars.append(k)
@@ -520,7 +633,9 @@ class VietnameseEngine:
             and not self._is_potential_vietnamese_prefix(word_str)
             and not self._is_valid_vietnamese_syllable(word_str)
         ):
-            return raw_str
+            return self._evaluate_raw_escaped(keys)
+
+        return word_str
 
         return word_str
 

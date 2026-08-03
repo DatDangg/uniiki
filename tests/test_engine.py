@@ -104,14 +104,20 @@ class TestVietnameseEngine(unittest.TestCase):
             ("nuowcs", "nước"),
             ("truowngf", "trường"),
             ("thuowngf", "thường"),
-            ("dduocw", "đuơc"),
-            ("dduocW", "đuơc"),
+            ("dduocw", "đươc"),
+            ("dduocW", "đươc"),
             ("dduocww", "đuọcw"),
             ("dduocwW", "đuọcw"),
-            ("dduocwjw", "đuọcw"),
-            ("dduocwjW", "đuọcw"),
-            ("dduowcjw", "đuọcw"),
-            ("dduowcjW", "đuọcw"),
+            ("wwork", "work"),
+            ("duocw", "dươc"),
+            ("duocwj", "dược"),
+            ("dduocwj", "được"),
+            ("chws", "chứ"),
+            ("tw", "tư"),
+            ("tws", "tứ"),
+            ("nws", "nứ"),
+            ("sstart", "start"),
+            ("ffriend", "friend"),
             ("pre", "pre"),
             ("google", "google"),
             ("gooogle", "google"),
@@ -134,6 +140,109 @@ class TestVietnameseEngine(unittest.TestCase):
                     word += insert
             final_word = self.engine.get_current_word()
             self.assertEqual(final_word, expected, f"Failed for {raw_keys}: got {final_word}, expected {expected}")
+
+    def test_work_typing_sequence(self):
+        """Verify typing 'w w o r k' produces 'work' without extra letters."""
+        self.engine.reset_buffer()
+        word = ""
+        for k in "wwork":
+            action, bcount, insert = self.engine.process_key(k)
+            if action == 'MODIFY':
+                word = word[:-bcount] + insert
+            elif action in ['APPEND', 'RESET']:
+                word += insert
+        self.assertEqual(word, "work")
+
+    def test_duocw_variants(self):
+        """Verify late 'w' hook logic for uo + coda words like duocw, duocwj, dduocwj, nuocw, truongwf."""
+        variants = [
+            ("duocw", "dươc"),
+            ("duocwj", "dược"),
+            ("dduocwj", "được"),
+            ("nuocw", "nươc"),
+            ("nuocws", "nước"),
+            ("truongw", "trương"),
+            ("truongwf", "trường"),
+        ]
+        for raw_keys, expected in variants:
+            self.engine.reset_buffer()
+            word = ""
+            for k in raw_keys:
+                action, bcount, insert = self.engine.process_key(k)
+                if action == 'MODIFY':
+                    word = word[:-bcount] + insert
+                elif action in ['APPEND', 'RESET']:
+                    word += insert
+            self.assertEqual(word, expected, f"Failed for '{raw_keys}': got '{word}', expected '{expected}'")
+
+    def test_english_words_with_escapes(self):
+        """Verify typing English words with initial double keys produces expected English words."""
+        cases = [
+            ("wwork", "work"),
+            ("sstart", "start"),
+            ("ffriend", "friend"),
+            ("data", "data"),
+            ("apple", "apple"),
+        ]
+        for raw_keys, expected in cases:
+            self.engine.reset_buffer()
+            word = ""
+            for k in raw_keys:
+                action, bcount, insert = self.engine.process_key(k)
+                if action == 'MODIFY':
+                    if bcount > 0:
+                        word = word[:-bcount] + insert
+                    else:
+                        word = word + insert
+                elif action in ['APPEND', 'RESET']:
+                    word += insert
+            self.assertEqual(word, expected, f"Failed for '{raw_keys}': got '{word}', expected '{expected}'")
+
+    def test_process_backspace_step_by_step(self):
+        """Verify backspacing on 'duocw' step-by-step un-applies modifiers and characters properly."""
+        self.engine.reset_buffer()
+        word = ""
+        for k in "duocw":
+            action, bcount, insert = self.engine.process_key(k)
+            if action == 'MODIFY':
+                word = word[:-bcount] + insert
+            elif action in ['APPEND', 'RESET']:
+                word += insert
+        self.assertEqual(word, "dươc")
+
+        # Now press Backspace 1st time
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual(action, 'MODIFY')
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "duoc")
+
+        # Press Backspace 2nd time
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual(action, 'MODIFY')
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "duo")
+
+        # Press Backspace 3rd time
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual(action, 'MODIFY')
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "du")
+
+        # Press Backspace 4th time
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual(action, 'MODIFY')
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "d")
+
+        # Press Backspace 5th time
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual(action, 'MODIFY')
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "")
+
+        # Press Backspace 6th time (buffer empty)
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual(action, 'FORWARD')
 
     def test_raw_backspace_reconverts_word(self):
         raw_keys = list("chuaw")

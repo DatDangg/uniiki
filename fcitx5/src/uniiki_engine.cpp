@@ -199,12 +199,15 @@ bool hasInvalidWoContinuation(const std::string &rawLower) {
 }
 
 bool isLikelyEnglishRawShape(const std::string &rawLower) {
-    // Productive English shapes that otherwise collide with Telex escapes.
-    // Keep these structural: this is not a list of individual protected words.
-    // "cl" is not a Vietnamese onset, and keeping it literal also prevents a
-    // later s/f/r/x/j from being swallowed in client/class/cloud/... bursts.
-    if (rawLower.rfind("cl", 0) == 0) {
-        return true;
+    static const std::vector<std::string> englishInitialClusters = {
+        "ww", "st", "fr", "fl", "dr", "br", "pr", "sl", "sm", "sn",
+        "sp", "wr", "bl", "cl", "cr", "gl", "gr", "sc",
+        "sk", "sq"
+    };
+    for (const auto &cluster : englishInitialClusters) {
+        if (rawLower.rfind(cluster, 0) == 0) {
+            return true;
+        }
     }
     const auto medialDD = rawLower.find("dd", 1);
     if (medialDD != std::string::npos && rawLower.size() > 5 &&
@@ -568,6 +571,41 @@ const char *toneName(int tone) {
     }
 }
 
+static bool isValidVietnameseInitialStr(const std::string &raw, size_t keyIndex) {
+    if (raw.empty() || keyIndex >= raw.size()) return true;
+    size_t firstVowelPos = std::string::npos;
+    for (size_t i = 0; i < keyIndex; ++i) {
+        char c = static_cast<char>(std::tolower(static_cast<unsigned char>(raw[i])));
+        if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y') {
+            firstVowelPos = i;
+            break;
+        }
+    }
+    if (firstVowelPos == std::string::npos) return true;
+    std::string initial;
+    for (size_t i = 0; i < firstVowelPos; ++i) {
+        char c = static_cast<char>(std::tolower(static_cast<unsigned char>(raw[i])));
+        initial.push_back(c);
+    }
+
+    std::string collapsed;
+    for (size_t i = 0; i < initial.size(); ++i) {
+        if (i + 1 < initial.size() && initial[i] == initial[i + 1]) {
+            collapsed.push_back(initial[i]);
+            ++i;
+        } else {
+            collapsed.push_back(initial[i]);
+        }
+    }
+
+    static const std::unordered_set<std::string> validInitials = {
+        "", "b", "c", "ch", "d", "g", "gh", "gi", "h", "k", "kh", "l", "m",
+        "n", "ng", "ngh", "nh", "p", "ph", "q", "qu", "r", "s", "t", "th",
+        "tr", "v", "x"
+    };
+    return validInitials.count(collapsed) > 0;
+}
+
 ToneLexResult lexAndReduceToneActions(const std::string &raw) {
     ToneLexResult result;
     bool vowelSeen = false;
@@ -576,7 +614,9 @@ ToneLexResult lexAndReduceToneActions(const std::string &raw) {
     for (size_t i = 0; i < raw.size(); ++i) {
         const char key = static_cast<char>(
             std::tolower(static_cast<unsigned char>(raw[i])));
-        const bool establishesVowel = isRawVowel(key) || key == 'w';
+        const bool establishesVowel = isRawVowel(key) ||
+            (key == 'w' && !(i == 0 && i + 1 < raw.size() &&
+                             std::tolower(static_cast<unsigned char>(raw[1])) == 'w'));
         if (vowelSeen && isToneKey(key) &&
             escapeSequenceKey == key && i == lastEscapeRawIndex + 1) {
             result.baseLetters.push_back(raw[i]);
@@ -587,7 +627,7 @@ ToneLexResult lexAndReduceToneActions(const std::string &raw) {
             continue;
         }
         escapeSequenceKey = 0;
-        if (!vowelSeen || !isToneKey(key)) {
+        if (!vowelSeen || !isToneKey(key) || !isValidVietnameseInitialStr(raw, i)) {
             result.baseLetters.push_back(raw[i]);
             result.tokens.push_back(
                 {i, raw[i], RawKeyOwnership::LiteralLetter});
@@ -3278,6 +3318,29 @@ void UniikiEngine::finishDirectComposition(InputContext *ic, UniikiState &state,
     state.recoverSuffix = boundary;
 }
 
+static std::string evaluateRawEscaped(const std::string &raw) {
+    if (raw.empty()) return "";
+    static const std::unordered_set<char> escapedSet = {
+        'd', 'w', 's', 'f', 'r', 'x', 'j', 'z'
+    };
+    std::string res;
+    size_t i = 0;
+    size_t n = raw.size();
+    while (i < n) {
+        char k = raw[i];
+        char lk = static_cast<char>(std::tolower(static_cast<unsigned char>(k)));
+        if (i + 1 < n && escapedSet.count(lk) &&
+            static_cast<char>(std::tolower(static_cast<unsigned char>(raw[i + 1]))) == lk) {
+            res.push_back(k);
+            i += 2;
+        } else {
+            res.push_back(k);
+            i += 1;
+        }
+    }
+    return res;
+}
+
 std::string UniikiEngine::evaluateTelex(const std::string &raw) {
     conversionDebugTrace = {};
     conversionDebugTrace.rawBuffer = raw;
@@ -3297,7 +3360,7 @@ std::string UniikiEngine::evaluateTelex(const std::string &raw) {
             return std::isdigit(static_cast<unsigned char>(ch)) || ch == '.' ||
                    ch == '/' || ch == '@' || ch == ':' || ch == '-';
         })) {
-        return raw;
+        return evaluateRawEscaped(raw);
     }
 
     const auto dState = traceDTransform(raw);
@@ -3407,7 +3470,7 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
     }
     auto rawLower = lowerRaw(raw);
     if (shouldProtectRawWord(raw, rawLower)) {
-        return raw;
+        return evaluateRawEscaped(raw);
     }
 
     if (!isDoubleWEscape(raw) && raw.size() >= 2 && hasUpperAfterFirst(raw)) {
@@ -3468,7 +3531,7 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
             // Atomic word-level fallback: never return a hybrid such as
             // delêt/deletê when a shape-only interpretation appeared inside
             // one of several syllable-like segments.
-            return raw;
+            return evaluateRawEscaped(raw);
         }
         return rendered;
     }
@@ -3723,14 +3786,55 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
                 wModifierRawIndex = i;
                 continue;
             }
-            if (endsWithBases(cells, "uo") && cells.size() - 2 >= nucleusStartForW) {
+
+            // Check if cells contains 'u' and 'o' sequence (with optional coda consonants/tones)
+            ssize_t uCellIdx = -1;
+            ssize_t oCellIdx = -1;
+            const size_t nucStart = firstNucleusCellIndex(cells);
+            for (ssize_t idx = static_cast<ssize_t>(cells.size()) - 1; idx >= static_cast<ssize_t>(nucStart); --idx) {
+                if (isVowelCell(cells[idx])) {
+                    if (cells[idx].base == 'o') {
+                        oCellIdx = idx;
+                    } else if (cells[idx].base == 'u' && oCellIdx != -1) {
+                        bool onlyCodaBetween = true;
+                        for (ssize_t k = idx + 1; k < oCellIdx; ++k) {
+                            if (isVowelCell(cells[k])) {
+                                onlyCodaBetween = false;
+                                break;
+                            }
+                        }
+                        if (onlyCodaBetween) {
+                            uCellIdx = idx;
+                            break;
+                        } else {
+                            oCellIdx = -1;
+                        }
+                    }
+                }
+            }
+
+            if (uCellIdx != -1 && oCellIdx != -1) {
+                wGeneratedVowel = false;
+                wModifiedMarks = {
+                    {static_cast<size_t>(uCellIdx), cells[uCellIdx].mark},
+                    {static_cast<size_t>(oCellIdx), cells[oCellIdx].mark},
+                };
+                cells[uCellIdx].mark = 3;
+                cells[oCellIdx].mark = 3;
+                wModifierActive = true;
+                wModifierKey = ch;
+                wModifierRawIndex = i;
+                continue;
+            }
+
+            if (endsWithBases(cells, "ua") && cells.size() - 2 >= nucleusStartForW) {
                 wGeneratedVowel = false;
                 wModifiedMarks = {
                     {cells.size() - 2, cells[cells.size() - 2].mark},
                     {cells.size() - 1, cells[cells.size() - 1].mark},
                 };
                 cells[cells.size() - 2].mark = 3;
-                cells[cells.size() - 1].mark = 3;
+                cells[cells.size() - 1].mark = 0;
                 wModifierActive = true;
                 wModifierKey = ch;
                 wModifierRawIndex = i;
@@ -3866,22 +3970,23 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
                      std::all_of(raw.begin(), raw.end(), [](char value) {
                          return std::tolower(static_cast<unsigned char>(value)) == 'd';
                      });
+
     if (candidate != raw && !shapeCandidate.shapeActions.empty() &&
         !hasVietnameseMarkedCell(cells)) {
         // A planned shape action that did not survive parsing must fall back
         // with all of its raw keys.  This prevents mixed ownership paths such
         // as cheese -> chee where a later tone-like letter was swallowed.
-        return raw;
+        return evaluateRawEscaped(raw);
     }
     if (candidate != raw && activeTone != TONE_NONE && !hasVowel(cells)) {
         // A tone action cannot own a word whose shape escape left no vowel
         // cell. Restore the complete raw transaction (for example cheese),
         // rather than leaking a partially collapsed ee/oo sequence.
-        return raw;
+        return evaluateRawEscaped(raw);
     }
-    if (!rawIsDRun && !wEscaped && candidate != raw && hasVietnameseMarkedCell(cells) &&
+    if (!rawIsDRun && !wEscaped && !wGeneratedVowel && candidate != raw && hasVietnameseMarkedCell(cells) &&
         !shapeCandidate.validVietnamese &&
-        (activeTone != TONE_NONE || !isPotentialVietnamesePrefixCells(cells))) {
+        activeTone == TONE_NONE && !isPotentialVietnamesePrefixCells(cells)) {
         if (!toneLex.escapedLiteralIndexes.empty()) {
             // Reconstruct from ownership: clear the applied tone, retain
             // literal/escaped cells, and never resurrect consumed modifiers
@@ -3889,7 +3994,7 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
             applyToneToCells(cells, TONE_NONE);
             return cellsText(cells);
         }
-        return raw;
+        return evaluateRawEscaped(raw);
     }
     return candidate;
 }
