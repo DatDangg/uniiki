@@ -1,5 +1,6 @@
 # 🇻🇳 Uniiki - Bộ Gõ Tiếng Việt Toàn Hệ Thống Không Preedit (Linux/Ubuntu)
 
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)]()
 [![Linux](https://img.shields.io/badge/OS-Linux%20%2F%20Ubuntu-orange?logo=ubuntu)](https://ubuntu.com)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue?logo=cplusplus)](https://isocpp.org/)
 [![Fcitx5](https://img.shields.io/badge/Framework-Fcitx5-green)](https://fcitx-im.org/)

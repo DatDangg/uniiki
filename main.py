@@ -7,11 +7,13 @@ Main Entry Point
 import sys
 import os
 import argparse
+from src import __version__
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 def main():
     parser = argparse.ArgumentParser(description="Uniiki System-wide Vietnamese IME without Preedit")
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}')
     parser.add_argument('--cli', action='store_true', help="Run in CLI headless mode (without System Tray icon)")
     parser.add_argument('--mode', choices=['telex', 'vni'], default='telex', help="Default Vietnamese typing mode")
     parser.add_argument('--backend', choices=['auto', 'evdev', 'pynput'], default='auto', help="Keyboard backend to use")
