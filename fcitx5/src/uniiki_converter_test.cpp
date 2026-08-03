@@ -53,6 +53,7 @@ int main() {
         {"wwork", "work"}, {"duocw", "dươc"},
         {"duocwj", "dược"}, {"dduocwj", "được"},
         {"chws", "chứ"}, {"tw", "tư"},
+        {"swar", "sửa"}, {"swa", "sưa"},
         {"cana", "cân"},   {"canaf", "cần"}, {"canas", "cấn"},
         {"canar", "cẩn"}, {"canax", "cẫn"}, {"canaj", "cận"},
         {"bene", "bên"},   {"benes", "bến"}, {"benef", "bền"},

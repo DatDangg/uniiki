@@ -573,12 +573,36 @@ const char *toneName(int tone) {
 
 static bool isValidVietnameseInitialStr(const std::string &raw, size_t keyIndex) {
     if (raw.empty() || keyIndex >= raw.size()) return true;
+    static const std::unordered_set<std::string> validInitials = {
+        "", "b", "c", "ch", "d", "g", "gh", "gi", "h", "k", "kh", "l", "m",
+        "n", "ng", "ngh", "nh", "p", "ph", "q", "qu", "r", "s", "t", "th",
+        "tr", "v", "x"
+    };
     size_t firstVowelPos = std::string::npos;
     for (size_t i = 0; i < keyIndex; ++i) {
         char c = static_cast<char>(std::tolower(static_cast<unsigned char>(raw[i])));
         if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y') {
             firstVowelPos = i;
             break;
+        }
+        if (c == 'w') {
+            std::string prefixBeforeW;
+            for (size_t k = 0; k < i; ++k) {
+                prefixBeforeW.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(raw[k]))));
+            }
+            std::string collapsedPrefix;
+            for (size_t k = 0; k < prefixBeforeW.size(); ++k) {
+                if (k + 1 < prefixBeforeW.size() && prefixBeforeW[k] == prefixBeforeW[k + 1]) {
+                    collapsedPrefix.push_back(prefixBeforeW[k]);
+                    ++k;
+                } else {
+                    collapsedPrefix.push_back(prefixBeforeW[k]);
+                }
+            }
+            if (!collapsedPrefix.empty() && validInitials.count(collapsedPrefix) > 0) {
+                firstVowelPos = i;
+                break;
+            }
         }
     }
     if (firstVowelPos == std::string::npos) return true;
@@ -598,11 +622,6 @@ static bool isValidVietnameseInitialStr(const std::string &raw, size_t keyIndex)
         }
     }
 
-    static const std::unordered_set<std::string> validInitials = {
-        "", "b", "c", "ch", "d", "g", "gh", "gi", "h", "k", "kh", "l", "m",
-        "n", "ng", "ngh", "nh", "p", "ph", "q", "qu", "r", "s", "t", "th",
-        "tr", "v", "x"
-    };
     return validInitials.count(collapsed) > 0;
 }
 

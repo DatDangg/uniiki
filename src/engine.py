@@ -150,6 +150,16 @@ class VietnameseEngine:
                 if hat != 'stroke':
                     vowel_idx = idx
                     break
+            elif ch.lower() == 'w':
+                prefix = "".join([c.lower() for c in chars[:idx]])
+                collapsed = ""
+                for k, c in enumerate(prefix):
+                    if k + 1 < len(prefix) and c == prefix[k+1]:
+                        continue
+                    collapsed += c
+                if collapsed and collapsed in VN_VALID_INITIALS:
+                    vowel_idx = idx
+                    break
 
         if vowel_idx is None:
             initial = "".join(chars)
