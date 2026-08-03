@@ -1693,8 +1693,15 @@ std::optional<size_t> applyToneToCells(std::vector<Cell> &cells, int tone) {
         for (const auto index : vowels) {
             nucleusBases.push_back(cells[index].base);
         }
+        if (nucleusBases == "ay" && tone == TONE_SAC) {
+            cells[vowels[0]].mark = 1;
+            target = vowels[0];
+            cells[target].tone = tone;
+            return target;
+        }
+
         static const std::unordered_map<std::string, size_t> openTargets = {
-            {"oa", 0}, {"oe", 0}, {"uy", 0}, {"ue", 1}, {"uo", 1},
+            {"oa", 1}, {"oe", 1}, {"uy", 1}, {"ue", 1}, {"uo", 1}, {"ua", 0},
             {"uya", 1}, {"uyu", 1}, {"oai", 1}, {"uai", 1}, {"oao", 1},
         };
         const auto explicitTarget = openTargets.find(nucleusBases);
@@ -3934,11 +3941,13 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
         for (const auto index : preToneParts.nucleusIndexes) {
             preToneBases.push_back(cells[index].base);
         }
+        if (preToneBases == "uo" && !preToneParts.coda.empty()) {
+            for (const auto index : preToneParts.nucleusIndexes) {
+                cells[index].mark = 3;
+            }
+        }
         if (lowerRaw(preToneParts.onset) == "qu" && preToneBases == "ay" &&
             preToneParts.nucleusIndexes.size() == 2) {
-            // In the qu + ây rhyme family, users conventionally type the
-            // tone at the end of quay and the syllable parser supplies the
-            // required circumflex (quayx -> quẫy).
             cells[preToneParts.nucleusIndexes.front()].mark = 1;
         }
     }

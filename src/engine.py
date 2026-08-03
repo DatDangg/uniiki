@@ -830,6 +830,19 @@ class VietnameseEngine:
         if not vowels_info:
             return word
 
+        # Handle ay + tone SAC -> â + SAC
+        bases = "".join([v[2].lower() for v in vowels_info])
+        if bases == "ay" and tone == 1: # tone 1 = SAC (thấy, mấy, đấy)
+            v_idx, ch, base, hat, _ = vowels_info[0]
+            is_upper = ch.isupper()
+            lookup_key = (base.lower(), 1) # hat 1 = â
+            if lookup_key in VOWEL_MATRIX:
+                new_char = VOWEL_MATRIX[lookup_key][tone]
+                if is_upper:
+                    new_char = new_char.upper()
+                word = word[:v_idx] + new_char + word[v_idx+1:]
+                return word
+
         target_idx = self._find_tone_vowel_index(word, vowels_info)
         v_idx, ch, base, hat, current_tone = vowels_info[target_idx]
 
@@ -855,7 +868,7 @@ class VietnameseEngine:
 
         pair_bases = "".join([v[2].lower() for v in vowels_info[:2]])
         pair_hats = "".join([str(v[3]) for v in vowels_info[:2]])
-        if pair_bases == 'uo' and pair_hats == '33':
+        if pair_bases == 'uo' and (pair_hats == '33' or pair_hats == '00'):
             return 1
 
         word_lower = word.lower()
