@@ -89,7 +89,10 @@ class VietnameseEngine:
 
     def process_key(self, char):
         if not char.isalnum() and char not in ['_']:
-            self.raw_keys.append(char)
+            # Punctuation ends the active Vietnamese word. Keeping it in the
+            # raw buffer makes a later reevaluation drop separators such as
+            # '/', '.', '@' and ':' and can also corrupt the next word.
+            self.reset_buffer()
             return ('APPEND', 0, char)
 
         if self.mode == 'telex':
@@ -123,17 +126,155 @@ class VietnameseEngine:
     def get_current_word(self):
         return self._evaluate_telex_sequence(self.raw_keys)
 
+    def _split_raw_segments(self, keys):
+        if not keys:
+            return []
+
+        valid_codas = ('c', 'ch', 'm', 'n', 'ng', 'nh', 'p', 't')
+        segments = []
+        segment_start = 0
+        has_vowel = False
+        coda = ''
+
+        def is_coda_prefix(value):
+            return any(candidate.startswith(value) for candidate in valid_codas)
+
+        for index, key in enumerate(keys):
+            lower = key.lower()
+            if lower == 'w':
+                if not has_vowel:
+                    has_vowel = True
+                continue
+            if lower in TELEX_TONE_KEYS or lower == 'z':
+                if has_vowel:
+                    continue
+            if lower in 'aeiouy':
+                if has_vowel and coda:
+                    segments.append((segment_start, index))
+                    segment_start = index
+                has_vowel = True
+                coda = ''
+                continue
+            if not lower.isalpha():
+                if index > segment_start:
+                    segments.append((segment_start, index))
+                segment_start = index + 1
+                has_vowel = False
+                coda = ''
+                continue
+            if not has_vowel:
+                continue
+
+            next_coda = coda + lower
+            if not is_coda_prefix(next_coda):
+                segments.append((segment_start, index))
+                segment_start = index
+                has_vowel = False
+                coda = ''
+                continue
+            coda = next_coda
+
+        if segment_start < len(keys):
+            segments.append((segment_start, len(keys)))
+        return segments
+
     def _evaluate_telex_sequence(self, keys):
+        if not keys:
+            return ""
+
+        raw_str = "".join(keys)
+        raw_lower = raw_str.lower()
+        protected_words = {
+            'python', 'password', 'desktop', 'windows', 'google', 'version',
+            'linux', 'raw', 'javascript', 'typescript', 'telex', 'vni',
+            'terminal', 'code', 'chrome', 'firefox', 'libreoffice',
+            'telegram', 'discord', 'zalo', 'web', 'latinh', 'pre', 'test',
+            'best'
+        }
+        if raw_lower in protected_words:
+            return raw_str
+        protected_roots = {
+            'tele', 'type', 'java', 'chrome', 'fire', 'libre', 'discord',
+            'zalo', 'web', 'latin', 'terminal', 'pre'
+        }
+        if raw_str.isascii() and any(
+            raw_lower.startswith(root) for root in protected_roots
+        ):
+            return raw_str
+
+        # Telex also permits the second d to be typed after the vowel cluster
+        # (doodj -> độ, dawjdng -> đặng). Only treat it as the
+        # onset modifier when removing it produces an actual marked Vietnamese
+        # syllable; this keeps ordinary text such as "dod" literal.
+        if raw_lower.startswith('d') and not raw_lower.startswith('dd'):
+            vowel_seen = False
+            for index in range(1, len(keys)):
+                lower = keys[index].lower()
+                if lower in 'aeiouy':
+                    vowel_seen = True
+                    continue
+                if lower != 'd' or not vowel_seen:
+                    continue
+                if any(key.lower() in 'aeiouy' for key in keys[index + 1:]):
+                    continue
+
+                without_modifier = keys[:index] + keys[index + 1:]
+                candidate = self._evaluate_telex_sequence(without_modifier)
+                if (
+                    candidate
+                    and candidate[0].lower() == 'd'
+                    and self._has_vietnamese_mark(candidate)
+                    and self._is_valid_vietnamese_syllable(candidate)
+                ):
+                    stroke = 'Đ' if candidate[0].isupper() else 'đ'
+                    return stroke + candidate[1:]
+
+        segments = self._split_raw_segments(keys)
+        if len(segments) <= 1:
+            return self._evaluate_telex_segment(keys)
+
+        rendered = []
+        previous_segment_transformed = False
+        for segment_index, (start, end) in enumerate(segments):
+            segment_keys = keys[start:end]
+            leading_d = 0
+            while (
+                leading_d < len(segment_keys)
+                and segment_keys[leading_d].lower() == 'd'
+            ):
+                leading_d += 1
+
+            if (
+                segment_index > 0
+                and not previous_segment_transformed
+                and leading_d >= 2
+            ):
+                segment_rendered = ''.join(segment_keys[1:leading_d])
+                segment_rendered += self._evaluate_telex_segment(
+                    segment_keys[leading_d:]
+                )
+            else:
+                segment_rendered = self._evaluate_telex_segment(segment_keys)
+
+            rendered.append(segment_rendered)
+            previous_segment_transformed = any(
+                ord(char) >= 128 for char in segment_rendered
+            )
+        return ''.join(rendered)
+
+    def _evaluate_telex_segment(self, keys):
         if not keys:
             return ""
 
         raw_str = "".join(keys)
 
         protected_words = {
-            'python', 'password', 'desktop', 'windows', 'google', 'version', 'raw',
+            'python', 'password', 'desktop', 'windows', 'google', 'version',
+            'linux', 'raw',
             'javascript', 'typescript', 'telex', 'vni',
             'terminal', 'code', 'chrome', 'firefox', 'libreoffice',
-            'telegram', 'discord', 'zalo', 'web', 'latinh', 'pre'
+            'telegram', 'discord', 'zalo', 'web', 'latinh', 'pre', 'test',
+            'best'
         }
         protected_roots = {
             'tele', 'type', 'java', 'chrome', 'fire', 'libre',
@@ -166,7 +307,7 @@ class VietnameseEngine:
 
         res_chars = []
         active_tone = TONES['NONE']
-        tone_count = {}
+        active_tone_action = None
         w_modifier = None
         w_escaped = False
 
@@ -182,28 +323,22 @@ class VietnameseEngine:
 
             # 1. 'dd' -> 'đ', 'ddd' -> 'dd' escape
             if lk == 'd':
-                if i + 2 < n and keys[i+1].lower() == 'd' and keys[i+2].lower() == 'd':
-                    res_chars.append('D' if k.isupper() else 'd')
-                    res_chars.append('D' if keys[i+2].isupper() else 'd')
-                    i += 3
+                if i == 0:
+                    run_end = i
+                    while run_end < n and keys[run_end].lower() == 'd':
+                        run_end += 1
+                    run_length = run_end - i
+                    if run_length % 2 == 0:
+                        res_chars.append('Đ' if keys[0].isupper() else 'đ')
+                    else:
+                        res_chars.append(keys[0])
+                    for literal in range((run_length - 1) // 2):
+                        res_chars.append(keys[run_length - 1 - literal])
+                    i = run_end
                     continue
-                if i + 1 < n and keys[i+1].lower() == 'd':
-                    res_chars.append('Đ' if k.isupper() else 'đ')
-                    i += 2
-                    continue
-                elif i > 0 and keys[0].lower() == 'd' and res_chars and res_chars[0] in ['d', 'D'] and any(c in VN_VOWELS for c in "".join(res_chars)):
-                    res_chars[0] = 'Đ' if res_chars[0].isupper() else 'đ'
-                    i += 1
-                    continue
-                elif i > 0 and res_chars and res_chars[-1] in ['d', 'D'] and not any(c in VN_VOWELS for c in "".join(res_chars)):
-                    prev_upper = res_chars[-1].isupper()
-                    res_chars[-1] = 'Đ' if prev_upper else 'đ'
-                    i += 1
-                    continue
-                else:
-                    res_chars.append(k)
-                    i += 1
-                    continue
+                res_chars.append(k)
+                i += 1
+                continue
 
             # 2. Consecutive double vowels: aa -> â, ee -> ê, oo -> ô
             if lk in ['a', 'e', 'o']:
@@ -332,17 +467,39 @@ class VietnameseEngine:
                     i += 1
                     continue
 
-                tone_count[lk] = tone_count.get(lk, 0) + 1
-                if tone_count[lk] > 1:
+                if (
+                    active_tone_action is not None
+                    and active_tone_action['trigger'] == lk
+                ):
                     active_tone = TONES['NONE']
-                    res_chars.append(k)
-                    i += 1
-                    continue
-
-                if lk == 'z':
-                    active_tone = TONES['NONE']
+                    has_future_literal_consonant = False
+                    for future_key in keys[i + 1:]:
+                        future = future_key.lower()
+                        if future in 'aeiouy':
+                            break
+                        if (
+                            future.isalpha()
+                            and future != 'w'
+                            and future not in TELEX_TONE_KEYS
+                            and future != 'z'
+                        ):
+                            has_future_literal_consonant = True
+                            break
+                    if has_future_literal_consonant:
+                        res_chars.append(k)
+                    active_tone_action = None
                 else:
-                    active_tone = TELEX_TONE_KEYS[lk]
+                    active_tone = (
+                        TONES['NONE'] if lk == 'z' else TELEX_TONE_KEYS[lk]
+                    )
+                    active_tone_action = {
+                        'type': 'tone',
+                        'raw_start': i,
+                        'raw_end': i + 1,
+                        'source': ''.join(res_chars),
+                        'result': '',
+                        'trigger': lk,
+                    }
                 i += 1
                 continue
 
@@ -353,8 +510,10 @@ class VietnameseEngine:
         if active_tone != TONES['NONE']:
             word_str = self._apply_tone_to_word(word_str, active_tone)
 
+        raw_is_d_run = bool(raw_str) and all(char.lower() == 'd' for char in raw_str)
         if (
-            not w_escaped
+            not raw_is_d_run
+            and not w_escaped
             and word_str != raw_str
             and self._has_vietnamese_mark(word_str)
             and word_str.lower() != 'đ'

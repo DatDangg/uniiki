@@ -42,24 +42,25 @@ except ImportError:
 
 from src.engine import VietnameseEngine
 
-CHAR_TO_EVDEV = {
-    'a': ecodes.KEY_A, 'b': ecodes.KEY_B, 'c': ecodes.KEY_C, 'd': ecodes.KEY_D,
-    'e': ecodes.KEY_E, 'f': ecodes.KEY_F, 'g': ecodes.KEY_G, 'h': ecodes.KEY_H,
-    'i': ecodes.KEY_I, 'j': ecodes.KEY_J, 'k': ecodes.KEY_K, 'l': ecodes.KEY_L,
-    'm': ecodes.KEY_M, 'n': ecodes.KEY_N, 'o': ecodes.KEY_O, 'p': ecodes.KEY_P,
-    'q': ecodes.KEY_Q, 'r': ecodes.KEY_R, 's': ecodes.KEY_S, 't': ecodes.KEY_T,
-    'u': ecodes.KEY_U, 'v': ecodes.KEY_V, 'w': ecodes.KEY_W, 'x': ecodes.KEY_X,
-    'y': ecodes.KEY_Y, 'z': ecodes.KEY_Z,
-    '0': ecodes.KEY_0, '1': ecodes.KEY_1, '2': ecodes.KEY_2, '3': ecodes.KEY_3,
-    '4': ecodes.KEY_4, '5': ecodes.KEY_5, '6': ecodes.KEY_6, '7': ecodes.KEY_7,
-    '8': ecodes.KEY_8, '9': ecodes.KEY_9,
-}
+if HAS_EVDEV:
+    CHAR_TO_EVDEV = {
+        'a': ecodes.KEY_A, 'b': ecodes.KEY_B, 'c': ecodes.KEY_C, 'd': ecodes.KEY_D,
+        'e': ecodes.KEY_E, 'f': ecodes.KEY_F, 'g': ecodes.KEY_G, 'h': ecodes.KEY_H,
+        'i': ecodes.KEY_I, 'j': ecodes.KEY_J, 'k': ecodes.KEY_K, 'l': ecodes.KEY_L,
+        'm': ecodes.KEY_M, 'n': ecodes.KEY_N, 'o': ecodes.KEY_O, 'p': ecodes.KEY_P,
+        'q': ecodes.KEY_Q, 'r': ecodes.KEY_R, 's': ecodes.KEY_S, 't': ecodes.KEY_T,
+        'u': ecodes.KEY_U, 'v': ecodes.KEY_V, 'w': ecodes.KEY_W, 'x': ecodes.KEY_X,
+        'y': ecodes.KEY_Y, 'z': ecodes.KEY_Z,
+        '0': ecodes.KEY_0, '1': ecodes.KEY_1, '2': ecodes.KEY_2, '3': ecodes.KEY_3,
+        '4': ecodes.KEY_4, '5': ecodes.KEY_5, '6': ecodes.KEY_6, '7': ecodes.KEY_7,
+        '8': ecodes.KEY_8, '9': ecodes.KEY_9,
+    }
+else:
+    CHAR_TO_EVDEV = {}
 
 class UniikiDaemon:
-    def __init__(self, mode='telex', enabled=True, on_state_change=None, backend='auto'):
+    def __init__(self, mode='telex', backend='auto'):
         self.engine = VietnameseEngine(mode=mode, modern_tone=True)
-        self.enabled = enabled
-        self.on_state_change = on_state_change
         self.backend = backend
         
         self.keyboard_controller = Controller() if HAS_PYNPUT else None
@@ -94,13 +95,6 @@ class UniikiDaemon:
         print(f"[Uniiki Daemon] Received signal {signum}, performing emergency ungrab...")
         self.stop()
         sys.exit(0)
-
-    def toggle_enable(self):
-        self.enabled = not self.enabled
-        self.engine.reset_buffer()
-        if self.on_state_change:
-            self.on_state_change(self.enabled)
-        print(f"[Uniiki Daemon] Mode toggled: {'ENABLED (VN)' if self.enabled else 'DISABLED (EN)'}")
 
     def set_mode(self, mode):
         self.engine.set_mode(mode)
@@ -160,14 +154,6 @@ class UniikiDaemon:
             return
 
         self.pressed_keys.add(key)
-
-        if (Key.ctrl in self.pressed_keys or Key.ctrl_l in self.pressed_keys or Key.ctrl_r in self.pressed_keys) and \
-           (Key.shift in self.pressed_keys or Key.shift_l in self.pressed_keys or Key.shift_r in self.pressed_keys):
-            self.toggle_enable()
-            return
-
-        if not self.enabled:
-            return
 
         if key in [Key.space, Key.enter, Key.tab, Key.backspace, Key.left, Key.right, Key.up, Key.down, Key.esc]:
             self.engine.reset_buffer()
@@ -286,20 +272,12 @@ class UniikiDaemon:
                     if code in [ecodes.KEY_LEFTMETA, ecodes.KEY_RIGHTMETA]:
                         meta_pressed = (state != 0)
 
-                    if ctrl_pressed and shift_pressed and state == 1 and not alt_pressed and not meta_pressed:
-                        self.toggle_enable()
-                        continue
-
                     if alt_pressed or meta_pressed or (ctrl_pressed and not shift_pressed):
                         self.engine.reset_buffer()
                         self._forward_event(event)
                         continue
 
                     if state == 1:
-                        if not self.enabled:
-                            self._forward_event(event)
-                            continue
-
                         if code in [ecodes.KEY_SPACE, ecodes.KEY_ENTER, ecodes.KEY_TAB, ecodes.KEY_BACKSPACE, ecodes.KEY_ESC]:
                             self.engine.reset_buffer()
                             self._forward_event(event)

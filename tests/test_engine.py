@@ -43,10 +43,20 @@ class TestVietnameseEngine(unittest.TestCase):
     def test_telex_double_key_escaping(self):
         tests = [
             ("tes", "té"),
-            ("tess", "tes"),
+            ("tess", "te"),
             ("tesst", "test"),
+            ("d", "d"),
+            ("dddd", "đd"),
+            ("datdang", "datdang"),
+            ("datddang", "datdang"),
+            ("dadang", "dadang"),
+            ("add", "ad"),
+            ("addd", "add"),
+            ("aa", "â"),
             ("aaa", "aa"),
+            ("ee", "ê"),
             ("eee", "ee"),
+            ("oo", "ô"),
             ("ooo", "oo"),
             ("dd", "đ"),
             ("ddd", "dd"),
@@ -63,6 +73,16 @@ class TestVietnameseEngine(unittest.TestCase):
             ("oww", "ow"),
             ("aw", "ă"),
             ("aww", "aw"),
+            ("as", "á"),
+            ("ass", "a"),
+            ("af", "à"),
+            ("aff", "a"),
+            ("ar", "ả"),
+            ("arr", "a"),
+            ("ax", "ã"),
+            ("axx", "a"),
+            ("aj", "ạ"),
+            ("ajj", "a"),
             ("wW", "w"),
             ("Ww", "W"),
             ("W", "Ư"),
@@ -129,6 +149,48 @@ class TestVietnameseEngine(unittest.TestCase):
         raw_keys.append("w")
         self.assertEqual(self.engine._evaluate_telex_sequence(raw_keys), "chuaw")
 
+    def test_d_candidate_is_scoped_to_active_segment(self):
+        steps = [
+            ("d", 0, "d", "d"),
+            ("da", 0, "da", "da"),
+            ("dat", 0, "dat", "dat"),
+            ("datd", 3, "d", "datd"),
+            ("datdd", 3, "dd", "datd"),
+            ("datdda", 3, "dda", "datda"),
+            ("datddan", 3, "ddan", "datdan"),
+            ("datddang", 3, "ddang", "datdang"),
+        ]
+
+        for raw, expected_start, expected_active, expected_rendered in steps:
+            ranges = self.engine._split_raw_segments(list(raw))
+            active_start, active_end = ranges[-1]
+            self.assertEqual(active_start, expected_start)
+            self.assertEqual(raw[active_start:active_end], expected_active)
+            self.assertEqual(
+                self.engine._evaluate_telex_sequence(list(raw)),
+                expected_rendered,
+            )
+
+    def test_late_d_modifier_still_forms_stroked_d(self):
+        self.assertEqual(
+            self.engine._evaluate_telex_sequence(list("doodj")),
+            "độ",
+        )
+        self.assertEqual(
+            self.engine._evaluate_telex_sequence(list("dawjdng")),
+            "đặng",
+        )
+
+    def test_punctuation_ends_word_without_disappearing(self):
+        visible = ""
+        for char in "https://ubuntu.com user@test.com":
+            action, backspaces, insertion = self.engine.process_key(char)
+            if action == 'MODIFY':
+                visible = visible[:-backspaces] + insertion
+            else:
+                visible += insertion
+        self.assertEqual(visible, "https://ubuntu.com user@test.com")
+
     def test_sentence_visible_output_with_word_resets(self):
         raw_text = "xin chaof, tooi ddang kieemr tra booj gox tieengs vieetj treen ubuntu"
         expected = "xin chào, tôi đang kiểm tra bộ gõ tiếng việt trên ubuntu"
@@ -155,9 +217,9 @@ class TestVietnameseEngine(unittest.TestCase):
             ("chafo", "chào"),
             ("toio", "tôi"),
             ("bojo", "bộ"),
-            ("dangd", "đang"),
-            ("trana", "trân"),
-            ("trono", "trôn"),
+            ("dangd", "dangd"),
+            ("trana", "trana"),
+            ("trono", "trono"),
             ("hoawcj", "hoặc"),
             ("ngoafi", "ngoài"),
         ]

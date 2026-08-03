@@ -80,5 +80,4 @@ find /tmp/uniiki-fcitx5-install -type f
 - Add C++ unit tests for the same fixtures as `tests/test_engine.py`.
 - Implement reset on focus change, cursor movement, Backspace, Enter, Tab, and
   punctuation.
-- Add status/submode action for VN/EN.
 - Remove or clearly mark `pynput` daemon as experimental fallback.

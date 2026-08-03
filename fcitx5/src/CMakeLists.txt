@@ -24,4 +24,31 @@ add_executable(uniiki_engine_test
 )
 target_link_libraries(uniiki_engine_test Fcitx5::Core)
 
-add_test(NAME uniiki_engine_test COMMAND uniiki_engine_test)
+# Kept as a broad legacy regression executable, but intentionally not
+# registered with CTest because it mixes converter and direct-commit checks.
+
+add_executable(uniiki_converter_test
+    uniiki_converter_test.cpp
+    uniiki_engine.cpp
+)
+target_link_libraries(uniiki_converter_test Fcitx5::Core)
+add_test(NAME uniiki_converter_test COMMAND uniiki_converter_test)
+set_tests_properties(uniiki_converter_test PROPERTIES LABELS "converter")
+
+add_executable(uniiki_direct_commit_test
+    uniiki_direct_commit_test.cpp
+    uniiki_engine.cpp
+)
+target_link_libraries(uniiki_direct_commit_test Fcitx5::Core)
+add_test(NAME uniiki_direct_commit_test COMMAND uniiki_direct_commit_test)
+set_tests_properties(uniiki_direct_commit_test PROPERTIES LABELS "direct-commit")
+
+add_executable(uniiki_availability_test
+    uniiki_availability_test.cpp
+    uniiki_engine.cpp
+)
+target_link_libraries(uniiki_availability_test Fcitx5::Core)
+add_test(NAME uniiki_availability_test COMMAND uniiki_availability_test)
+set_tests_properties(uniiki_availability_test PROPERTIES
+    LABELS "availability;fuzz"
+    TIMEOUT 180)

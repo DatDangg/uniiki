@@ -10,6 +10,8 @@ env/
 
 # C++ / CMake build outputs
 build/
+build-*/
+fcitx5/build*/
 bin/
 *.o
 *.so

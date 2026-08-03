@@ -1,7 +1,4 @@
-"""
-Uniiki System Tray & Settings Application for Ubuntu
-Renders a system tray indicator on Ubuntu top bar to toggle VN/EN modes and configure engine options.
-"""
+"""Uniiki system tray and Vietnamese input settings for Ubuntu."""
 
 import sys
 import os
@@ -20,30 +17,25 @@ from src.daemon import UniikiDaemon
 class UniikiApp:
     def __init__(self, backend='auto'):
         self.mode = 'telex'
-        self.enabled = True
         self.modern_tone = True
         self.backend = backend
         
         self.daemon = UniikiDaemon(
-            mode=self.mode, 
-            enabled=self.enabled,
-            on_state_change=self._on_daemon_state_change,
+            mode=self.mode,
             backend=self.backend
         )
         self.icon = None
 
-    def _create_tray_icon(self, text="VN", is_active=True):
-        """Generates a sleek, high-resolution tray icon image with VN or EN label."""
+    def _create_tray_icon(self):
+        """Generate the always-on Vietnamese tray icon."""
         width = 64
         height = 64
         image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        # Background badge: vibrant indigo for VN active, slate gray for EN inactive
-        bg_color = (79, 70, 229, 255) if is_active else (100, 116, 139, 255) # #4F46E5 or #64748B
+        bg_color = (79, 70, 229, 255)
         draw.rounded_rectangle([4, 4, width - 4, height - 4], radius=16, fill=bg_color)
 
-        # Text label (VN / EN)
         text_color = (255, 255, 255, 255)
         try:
             font = ImageFont.truetype("DejaVuSans-Bold.ttf", 30)
@@ -51,6 +43,7 @@ class UniikiApp:
             font = ImageFont.load_default()
 
         # Center text inside icon
+        text = "VN"
         bbox = draw.textbbox((0, 0), text, font=font)
         tw = bbox[2] - bbox[0]
         th = bbox[3] - bbox[1]
@@ -59,16 +52,6 @@ class UniikiApp:
         draw.text((tx, ty), text, fill=text_color, font=font)
 
         return image
-
-    def _on_daemon_state_change(self, is_enabled):
-        self.enabled = is_enabled
-        if self.icon:
-            text = "VN" if is_enabled else "EN"
-            self.icon.icon = self._create_tray_icon(text, is_enabled)
-            self.icon.title = f"Uniiki Vietnamese IME: {'BẬT (VN)' if is_enabled else 'TẮT (EN)'}"
-
-    def toggle_mode_click(self, icon, item):
-        self.daemon.toggle_enable()
 
     def set_telex(self, icon, item):
         self.mode = 'telex'
@@ -106,8 +89,6 @@ class UniikiApp:
         menu = Menu(
             item('🚀 Uniiki - Bộ gõ tiếng Việt (Không Preedit)', None, enabled=False),
             Menu.SEPARATOR,
-            item('🇻🇳 Chế độ Tiếng Việt (VN)', self.toggle_mode_click, checked=lambda item: self.enabled),
-            Menu.SEPARATOR,
             item('Kiểu gõ: Telex', self.set_telex, checked=lambda item: self.mode == 'telex'),
             item('Kiểu gõ: VNI', self.set_vni, checked=lambda item: self.mode == 'vni'),
             Menu.SEPARATOR,
@@ -116,7 +97,7 @@ class UniikiApp:
             item('❌ Thoát Uniiki', self.quit_app)
         )
 
-        icon_image = self._create_tray_icon("VN", self.enabled)
+        icon_image = self._create_tray_icon()
         self.icon = pystray.Icon("Uniiki", icon_image, "Uniiki Vietnamese IME", menu)
         print("[Uniiki App] System tray application started on Ubuntu top bar!")
         self.icon.run()

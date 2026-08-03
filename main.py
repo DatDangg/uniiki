@@ -22,13 +22,13 @@ def main():
     print("============================================================")
     print(" • Không có Preedit underline (gạch chân / ô vuông xem trước)")
     print(" • Tương thích mọi app trên Ubuntu (Chrome, VS Code, Terminal...)")
-    print(" • Phím tắt chuyển đổi VN/EN: Ctrl + Shift")
+    print(" • Luôn bật chế độ gõ tiếng Việt")
     print("=" * 60)
 
     if args.cli:
         from src.daemon import UniikiDaemon
 
-        daemon = UniikiDaemon(mode=args.mode, enabled=True, backend=args.backend)
+        daemon = UniikiDaemon(mode=args.mode, backend=args.backend)
         if daemon.start():
             try:
                 import time

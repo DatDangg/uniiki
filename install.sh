@@ -19,9 +19,15 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 # 2. Tải hoặc Cập nhật mã nguồn vào ~/.uniiki
-if [ -d "$INSTALL_DIR" ]; then
-    echo "[1/4] Đang cập nhật Uniiki tại $INSTALL_DIR..."
-    git -C "$INSTALL_DIR" pull origin main
+if [ -d "$INSTALL_DIR/.git" ]; then
+    echo "[1/4] Đang cập nhật Uniiki từ git tại $INSTALL_DIR..."
+    git -C "$INSTALL_DIR" pull origin main || true
+elif [ -d "$INSTALL_DIR" ]; then
+    echo "[1/4] Đang đồng bộ Uniiki tại $INSTALL_DIR..."
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
+        cp -r "$SCRIPT_DIR"/* "$INSTALL_DIR/" 2>/dev/null || true
+    fi
 else
     echo "[1/4] Đang tải mã nguồn Uniiki vào $INSTALL_DIR..."
     git clone "$REPO_URL" "$INSTALL_DIR"

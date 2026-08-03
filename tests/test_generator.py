@@ -181,7 +181,9 @@ class TestTelexEngineGenerator(unittest.TestCase):
                     word = word[:-bcount] + insert
                 elif action in ['APPEND', 'RESET']:
                     word += insert
-            final_word = self.engine.get_current_word()
+            # Separators terminate the active composition, so validate the
+            # text emitted to the application instead of the final buffer.
+            final_word = word
             self.assertEqual(final_word, text, f"Failed protection test for '{text}': got '{final_word}'")
 
     def test_double_key_escapes(self):
