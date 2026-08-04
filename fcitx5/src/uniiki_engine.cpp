@@ -3942,8 +3942,17 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
             preToneBases.push_back(cells[index].base);
         }
         if (preToneBases == "uo" && !preToneParts.coda.empty()) {
+            bool plainUO = true;
             for (const auto index : preToneParts.nucleusIndexes) {
-                cells[index].mark = 3;
+                if (cells[index].mark != 0) {
+                    plainUO = false;
+                    break;
+                }
+            }
+            if (plainUO) {
+                for (const auto index : preToneParts.nucleusIndexes) {
+                    cells[index].mark = 3;
+                }
             }
         }
         if (lowerRaw(preToneParts.onset) == "qu" && preToneBases == "ay" &&
