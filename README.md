@@ -40,7 +40,7 @@ cd uniiki
 cmake -S fcitx5 -B build/fcitx5 -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build/fcitx5
 sudo cmake --install build/fcitx5
-fcitx5-remote -r
+sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor/ && fcitx5-remote -r
 ```
 
 > **Sau khi cài đặt:**
