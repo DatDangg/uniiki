@@ -13,9 +13,10 @@ rm -f ~/.local/share/fcitx5/inputmethod/uniiki.conf 2>/dev/null || true
 rm -f ~/.local/share/icons/hicolor/scalable/apps/uniiki*.svg 2>/dev/null || true
 rm -f ~/.local/lib/fcitx5/libuniiki.so 2>/dev/null || true
 
-# 3. Xóa executable script, autostart và thư mục mã nguồn user
+# 3. Xóa executable script, autostart, environment.d và thư mục mã nguồn user
 rm -f ~/.local/bin/uniiki 2>/dev/null || true
 rm -f ~/.config/autostart/uniiki.desktop 2>/dev/null || true
+rm -f ~/.config/environment.d/50-fcitx5.conf 2>/dev/null || true
 rm -rf ~/.uniiki 2>/dev/null || true
 
 # 4. Xóa các file hệ thống Fcitx5 /usr (nếu có quyền sudo)

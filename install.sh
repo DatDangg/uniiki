@@ -63,9 +63,31 @@ Comment=Bộ gõ tiếng Việt không preedit cho Linux
 Categories=Utility;
 X-GNOME-Autostart-enabled=true
 EOF
-echo "[4/4] Đã thêm Uniiki vào Autostart."
+echo "[4/5] Đã thêm Uniiki vào Autostart."
+
+# 7. Cấu hình biến môi trường bộ gõ (GTK/QT/XMODIFIERS) cho Terminal & Wayland
+mkdir -p ~/.config/environment.d
+cat << 'EOF' > ~/.config/environment.d/50-fcitx5.conf
+GTK_IM_MODULE=fcitx
+QT_IM_MODULE=fcitx
+XMODIFIERS=@im=fcitx
+EOF
+
+for RC_FILE in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+    if [ -f "$RC_FILE" ] && ! grep -q "GTK_IM_MODULE=fcitx" "$RC_FILE"; then
+        cat << 'EOF' >> "$RC_FILE"
+
+# Fcitx5 / Uniiki environment variables
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+EOF
+    fi
+done
+echo "[5/5] Đã thiết lập biến môi trường bộ gõ cho Terminal & Wayland."
 
 echo ""
 echo "=== ✨ Cài đặt Uniiki hoàn tất! ==="
 echo "📌 Bạn có thể bật bộ gõ bằng lệnh: uniiki"
 echo "📌 Uniiki sẽ tự động chạy cùng hệ thống khi khởi động."
+
