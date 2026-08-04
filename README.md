@@ -90,6 +90,15 @@ cp uniiki.desktop ~/.config/autostart/
 
 ---
 
+## 🗑️ Gỡ Bỏ (Uninstall)
+
+Để gỡ bỏ hoàn toàn Uniiki khỏi hệ thống, bạn chạy duy nhất lệnh này trong Terminal:
+```bash
+curl -fsSL https://raw.githubusercontent.com/DatDangg/uniiki/main/uninstall.sh | bash
+```
+
+---
+
 ## 📄 Giấy Phép (License)
 
 Dự án được phân phối dưới giấy phép open-source. Chi tiết tham khảo trong tệp repository.
