@@ -18,6 +18,11 @@ configure_file(uniiki.conf.in uniiki.conf @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/uniiki.conf"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/fcitx5/inputmethod")
 
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../icons/uniiki.svg"
+              "${CMAKE_CURRENT_SOURCE_DIR}/../icons/uniiki-vi.svg"
+              "${CMAKE_CURRENT_SOURCE_DIR}/../icons/uniiki-en.svg"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps")
+
 add_executable(uniiki_engine_test
     uniiki_engine_test.cpp
     uniiki_engine.cpp

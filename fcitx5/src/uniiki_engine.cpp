@@ -1799,10 +1799,84 @@ UniikiEngine::UniikiEngine(Instance *instance)
         });
 }
 
+std::string UniikiEngine::subModeLabelImpl(const InputMethodEntry &, InputContext &) {
+    return lang_ == "VI" ? "VI" : "EN";
+}
+
+std::string UniikiEngine::subModeIconImpl(const InputMethodEntry &, InputContext &) {
+    return lang_ == "VI" ? "uniiki-vi" : "uniiki-en";
+}
+
 void UniikiEngine::keyEvent(const InputMethodEntry &, KeyEvent &event) {
     auto sym = event.key().sym();
     auto *ic = event.inputContext();
     auto *state = ic->propertyFor(&factory_);
+
+    bool isRelease = event.isRelease();
+    bool isShift = (sym == FcitxKey_Shift_L || sym == FcitxKey_Shift_R);
+    bool isCtrl = (sym == FcitxKey_Control_L || sym == FcitxKey_Control_R);
+
+    if (isShift) {
+        if (!isRelease) {
+            ctrl_shift_shift_pressed_ = true;
+            if (ctrl_shift_ctrl_pressed_) {
+                ctrl_shift_combo_active_ = true;
+                ctrl_shift_interrupted_ = false;
+            }
+        } else {
+            ctrl_shift_shift_pressed_ = false;
+            if (ctrl_shift_combo_active_ && !ctrl_shift_interrupted_) {
+                lang_ = (lang_ == "VI") ? "EN" : "VI";
+                ctrl_shift_combo_active_ = false;
+                if (ic) {
+                    ic->updateUserInterface(UserInterfaceComponent::StatusArea);
+                }
+            }
+            if (!ctrl_shift_ctrl_pressed_ && !ctrl_shift_shift_pressed_) {
+                ctrl_shift_combo_active_ = false;
+                ctrl_shift_interrupted_ = false;
+            }
+        }
+        return;
+    }
+
+    if (isCtrl) {
+        if (!isRelease) {
+            ctrl_shift_ctrl_pressed_ = true;
+            if (ctrl_shift_shift_pressed_) {
+                ctrl_shift_combo_active_ = true;
+                ctrl_shift_interrupted_ = false;
+            }
+        } else {
+            ctrl_shift_ctrl_pressed_ = false;
+            if (ctrl_shift_combo_active_ && !ctrl_shift_interrupted_) {
+                lang_ = (lang_ == "VI") ? "EN" : "VI";
+                ctrl_shift_combo_active_ = false;
+                if (ic) {
+                    ic->updateUserInterface(UserInterfaceComponent::StatusArea);
+                }
+            }
+            if (!ctrl_shift_ctrl_pressed_ && !ctrl_shift_shift_pressed_) {
+                ctrl_shift_combo_active_ = false;
+                ctrl_shift_interrupted_ = false;
+            }
+        }
+        return;
+    }
+
+    if (!isRelease && !isShift && !isCtrl) {
+        if (ctrl_shift_ctrl_pressed_ || ctrl_shift_shift_pressed_ || ctrl_shift_combo_active_) {
+            ctrl_shift_interrupted_ = true;
+        }
+    }
+
+    if (lang_ == "EN") {
+        if (state) {
+            state->reset();
+        }
+        return;
+    }
+
     auto eventId = nextKeyEventId();
     const auto keyStartedAt = monotonicMicros();
     auto physicalKey = event.key().toString();

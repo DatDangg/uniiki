@@ -62,6 +62,13 @@ class UniikiDaemon:
     def __init__(self, mode='telex', backend='auto'):
         self.engine = VietnameseEngine(mode=mode, modern_tone=True)
         self.backend = backend
+        self.lang = 'VI'
+        self.on_language_changed = None
+
+        self.ctrl_pressed = False
+        self.shift_pressed = False
+        self.ctrl_shift_combo_active = False
+        self.ctrl_shift_interrupted = False
         
         self.keyboard_controller = Controller() if HAS_PYNPUT else None
         self.listener = None
@@ -99,6 +106,22 @@ class UniikiDaemon:
     def set_mode(self, mode):
         self.engine.set_mode(mode)
         print(f"[Uniiki Daemon] Input mode changed to: {mode}")
+
+    def set_language(self, lang):
+        if lang in ['VI', 'EN'] and self.lang != lang:
+            self.lang = lang
+            self.engine.reset_buffer()
+            print(f"[Uniiki Daemon] Input language switched to: {self.lang}")
+            if callable(self.on_language_changed):
+                try:
+                    self.on_language_changed(self.lang)
+                except Exception as e:
+                    print(f"[Uniiki Daemon Warning] Language callback error: {e}")
+
+    def toggle_language(self):
+        new_lang = 'EN' if self.lang == 'VI' else 'VI'
+        self.set_language(new_lang)
+        return self.lang
 
     def start(self):
         self.is_running = True
@@ -155,6 +178,29 @@ class UniikiDaemon:
 
         self.pressed_keys.add(key)
 
+        is_ctrl = HAS_PYNPUT and key in (Key.ctrl, Key.ctrl_l, Key.ctrl_r)
+        is_shift = HAS_PYNPUT and key in (Key.shift, Key.shift_l, Key.shift_r)
+
+        if is_ctrl:
+            self.ctrl_pressed = True
+            if self.shift_pressed:
+                self.ctrl_shift_combo_active = True
+                self.ctrl_shift_interrupted = False
+            return
+        elif is_shift:
+            self.shift_pressed = True
+            if self.ctrl_pressed:
+                self.ctrl_shift_combo_active = True
+                self.ctrl_shift_interrupted = False
+            return
+        else:
+            if self.ctrl_pressed or self.shift_pressed or self.ctrl_shift_combo_active:
+                self.ctrl_shift_interrupted = True
+
+        if self.lang == 'EN':
+            self.engine.reset_buffer()
+            return
+
         if key == Key.backspace:
             if self.engine.raw_keys:
                 action, backspace_count, text_to_insert = self.engine.process_backspace()
@@ -195,6 +241,26 @@ class UniikiDaemon:
     def _on_release(self, key):
         if key in self.pressed_keys:
             self.pressed_keys.remove(key)
+
+        is_ctrl = HAS_PYNPUT and key in (Key.ctrl, Key.ctrl_l, Key.ctrl_r)
+        is_shift = HAS_PYNPUT and key in (Key.shift, Key.shift_l, Key.shift_r)
+
+        if is_ctrl:
+            self.ctrl_pressed = False
+            if self.ctrl_shift_combo_active and not self.ctrl_shift_interrupted:
+                self.toggle_language()
+                self.ctrl_shift_combo_active = False
+            if not self.ctrl_pressed and not self.shift_pressed:
+                self.ctrl_shift_combo_active = False
+                self.ctrl_shift_interrupted = False
+        elif is_shift:
+            self.shift_pressed = False
+            if self.ctrl_shift_combo_active and not self.ctrl_shift_interrupted:
+                self.toggle_language()
+                self.ctrl_shift_combo_active = False
+            if not self.ctrl_pressed and not self.shift_pressed:
+                self.ctrl_shift_combo_active = False
+                self.ctrl_shift_interrupted = False
 
     def _inject_replacement_pynput(self, backspace_count, text_to_insert):
         with self.pynput_inject_lock:
@@ -256,6 +322,8 @@ class UniikiDaemon:
         ctrl_pressed = False
         alt_pressed = False
         meta_pressed = False
+        ctrl_shift_combo_active = False
+        ctrl_shift_interrupted = False
 
         KEY_MAP = {
             ecodes.KEY_A: 'a', ecodes.KEY_B: 'b', ecodes.KEY_C: 'c', ecodes.KEY_D: 'd',
@@ -277,13 +345,52 @@ class UniikiDaemon:
                     state = key_event.keystate
 
                     if code in [ecodes.KEY_LEFTSHIFT, ecodes.KEY_RIGHTSHIFT]:
-                        shift_pressed = (state != 0)
+                        if state == 1:
+                            shift_pressed = True
+                            if ctrl_pressed:
+                                ctrl_shift_combo_active = True
+                                ctrl_shift_interrupted = False
+                        elif state == 0:
+                            shift_pressed = False
+                            if ctrl_shift_combo_active and not ctrl_shift_interrupted:
+                                self.toggle_language()
+                                ctrl_shift_combo_active = False
+                            if not ctrl_pressed and not shift_pressed:
+                                ctrl_shift_combo_active = False
+                                ctrl_shift_interrupted = False
+                        self._forward_event(event)
+                        continue
+
                     if code in [ecodes.KEY_LEFTCTRL, ecodes.KEY_RIGHTCTRL]:
-                        ctrl_pressed = (state != 0)
+                        if state == 1:
+                            ctrl_pressed = True
+                            if shift_pressed:
+                                ctrl_shift_combo_active = True
+                                ctrl_shift_interrupted = False
+                        elif state == 0:
+                            ctrl_pressed = False
+                            if ctrl_shift_combo_active and not ctrl_shift_interrupted:
+                                self.toggle_language()
+                                ctrl_shift_combo_active = False
+                            if not ctrl_pressed and not shift_pressed:
+                                ctrl_shift_combo_active = False
+                                ctrl_shift_interrupted = False
+                        self._forward_event(event)
+                        continue
+
                     if code in [ecodes.KEY_LEFTALT, ecodes.KEY_RIGHTALT]:
                         alt_pressed = (state != 0)
                     if code in [ecodes.KEY_LEFTMETA, ecodes.KEY_RIGHTMETA]:
                         meta_pressed = (state != 0)
+
+                    if state == 1 and code not in [ecodes.KEY_LEFTSHIFT, ecodes.KEY_RIGHTSHIFT, ecodes.KEY_LEFTCTRL, ecodes.KEY_RIGHTCTRL]:
+                        if ctrl_pressed or shift_pressed or ctrl_shift_combo_active:
+                            ctrl_shift_interrupted = True
+
+                    if self.lang == 'EN':
+                        self.engine.reset_buffer()
+                        self._forward_event(event)
+                        continue
 
                     if alt_pressed or meta_pressed or (ctrl_pressed and not shift_pressed):
                         self.engine.reset_buffer()

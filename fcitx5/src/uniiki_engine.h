@@ -174,6 +174,9 @@ public:
     static std::pair<unsigned int, std::string>
     replacementDeltaForTest(const std::string &oldText, const std::string &newText);
 
+    std::string subModeLabelImpl(const InputMethodEntry &entry, InputContext &ic) override;
+    std::string subModeIconImpl(const InputMethodEntry &entry, InputContext &ic) override;
+
 private:
     struct ProcessResult {
         bool handled = false;
@@ -212,6 +215,12 @@ private:
     FactoryFor<UniikiState> factory_;
     std::unique_ptr<HandlerTableEntry<EventHandler>> surroundingUpdatedWatcher_;
     std::unique_ptr<HandlerTableEntry<EventHandler>> focusOutWatcher_;
+
+    std::string lang_ = "VI";
+    bool ctrl_shift_ctrl_pressed_ = false;
+    bool ctrl_shift_shift_pressed_ = false;
+    bool ctrl_shift_combo_active_ = false;
+    bool ctrl_shift_interrupted_ = false;
 };
 
 class UniikiFactory final : public AddonFactory {

@@ -1,6 +1,6 @@
 # 🇻🇳 Uniiki - Bộ Gõ Tiếng Việt Toàn Hệ Thống Không Preedit (Linux/Ubuntu)
 
-[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-v1.2.0-blue.svg)]()
 [![Linux](https://img.shields.io/badge/OS-Linux%20%2F%20Ubuntu-orange?logo=ubuntu)](https://ubuntu.com)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue?logo=cplusplus)](https://isocpp.org/)
 [![Fcitx5](https://img.shields.io/badge/Framework-Fcitx5-green)](https://fcitx-im.org/)
@@ -14,6 +14,8 @@
 ## 🌟 Tại Sao Chọn Uniiki?
 
 * ⚡ **Zero Preedit**: Ký tự tiếng Việt được biến đổi và đưa thẳng vào văn bản ngay tức thì mà không qua ô gạch chân xem trước.
+* ⌨️ **Đổi Chế Độ Gõ Siêu Nhanh (Ctrl + Shift)**: Chuyển đổi qua lại giữa tiếng Việt (**VI**) và tiếng Anh (**EN**) dễ dàng bằng phím tắt `Ctrl + Shift`.
+* 🎨 **System Tray Icon (VI / EN)**: Hiển thị trực quan trạng thái gõ hiện tại trên thanh tác vụ Ubuntu (Icon tím **VI** / Icon xám **EN**).
 * 🚀 **Tích Hợp Fcitx5 Native Addon**: Tích hợp trực tiếp vào trình quản lý bộ gõ Fcitx5 cho độ trễ cực thấp và độ ổn định tuyệt đối.
 * 🎯 **Tương Thích 100%**: Hoạt động hoàn hảo trên ứng dụng Electron (VS Code, Discord), ứng dụng GTK/Qt, Trình duyệt web và Terminal (X11 & Wayland).
 * ⚙️ **Quy Tắc Đặt Dấu**: Hỗ trợ chuẩn dấu mới (`hòa`, `thủy`) cũng như chuẩn cũ (`hoà`, `thuỷ`).
