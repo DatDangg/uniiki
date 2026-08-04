@@ -50,27 +50,6 @@ sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor/ && fcitx5-remote -r
 
 ---
 
-### Cách 2: Cài Đặt 1-Click Script (Python Daemon & Autostart)
-
-Mở Terminal và chạy duy nhất lệnh này:
-```bash
-curl -fsSL https://raw.githubusercontent.com/DatDangg/uniiki/main/install.sh | bash
-```
-> Script sẽ tự động đồng bộ mã nguồn vào `~/.uniiki`, cài đặt thư viện phụ thuộc, tạo lệnh `uniiki` toàn hệ thống và thêm vào Autostart.
-
----
-
-### Cách 3: Chạy Thủ Công Từ Mã Nguồn (Source)
-
-```bash
-git clone https://github.com/DatDangg/uniiki.git
-cd uniiki
-pip install -r requirements.txt
-python3 main.py
-```
-
----
-
 ## ⌨️ Bảng Quy Tắc Gõ Telex
 
 | Thao tác | Phím gõ | Kết quả ví dụ |
