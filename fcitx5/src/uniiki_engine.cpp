@@ -2757,13 +2757,7 @@ UniikiEngine::ProcessResult UniikiEngine::processChar(UniikiState &state, char c
 }
 
 bool UniikiEngine::canUseDirectCommit(InputContext *ic, const UniikiState &state) const {
-    auto capabilities = ic->capabilityFlags();
-
-    if (state.lastRenderedText.empty()) {
-        return true;
-    }
-
-    return capabilities.test(CapabilityFlag::SurroundingText);
+    return true;
 }
 
 unsigned int UniikiEngine::surroundingDeleteUnits(const std::string &utf8Text) const {
@@ -3335,8 +3329,15 @@ void UniikiEngine::renderDirectCommit(InputContext *ic, UniikiState &state,
                 surroundingDeleteUnits(oldSuffix) +
                 surroundingDeleteUnits(insertText);
             if (stagedDelete > 0) {
-                ic->deleteSurroundingText(-static_cast<int>(stagedDelete),
-                                          stagedDelete);
+                auto capabilities = ic->capabilityFlags();
+                if (capabilities.test(CapabilityFlag::SurroundingText)) {
+                    ic->deleteSurroundingText(-static_cast<int>(stagedDelete),
+                                              stagedDelete);
+                } else {
+                    for (uint32_t i = 0; i < stagedDelete; ++i) {
+                        ic->forwardKey(Key(FcitxKey_BackSpace));
+                    }
+                }
             }
             if (!insertText.empty()) {
                 ic->commitString(insertText);
@@ -3364,7 +3365,14 @@ void UniikiEngine::renderDirectCommit(InputContext *ic, UniikiState &state,
             // Fcitx defines offset and size in UCS-4 code points. The calls
             // are ordered requests; a surrounding update is verification,
             // never an acknowledgement gate.
-            ic->deleteSurroundingText(replacement.deleteOffset, deleteCount);
+            auto capabilities = ic->capabilityFlags();
+            if (capabilities.test(CapabilityFlag::SurroundingText)) {
+                ic->deleteSurroundingText(replacement.deleteOffset, deleteCount);
+            } else {
+                for (uint32_t i = 0; i < deleteCount; ++i) {
+                    ic->forwardKey(Key(FcitxKey_BackSpace));
+                }
+            }
             if (!insertText.empty()) {
                 ic->commitString(insertText);
             }
