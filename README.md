@@ -35,6 +35,8 @@ sudo apt install -y cmake extra-cmake-modules g++ pkg-config fcitx5 libfcitx5cor
 
 Biên dịch và cài đặt vào hệ thống:
 ```bash
+git clone https://github.com/DatDangg/uniiki.git
+cd uniiki
 cmake -S fcitx5 -B build/fcitx5 -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build/fcitx5
 sudo cmake --install build/fcitx5
