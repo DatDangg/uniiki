@@ -2141,9 +2141,23 @@ void UniikiEngine::keyEvent(const InputMethodEntry &, KeyEvent &event) {
         if (!provenance.graphemes.empty()) {
             removedRawIndexes = provenance.graphemes.back().rawIndexes;
         }
+        char poppedChar = rawBefore.back();
+        bool isLiteralEnding = false;
+        if (!lastRenderedBefore.empty() && static_cast<unsigned char>(poppedChar) < 128) {
+            char lastChar = lastRenderedBefore.back();
+            if (static_cast<unsigned char>(lastChar) < 128) {
+                isLiteralEnding = (std::tolower(static_cast<unsigned char>(lastChar)) == 
+                                   std::tolower(static_cast<unsigned char>(poppedChar)));
+            }
+        }
+
         state->rawBuffer = rawAfterVisualBackspace(state->rawBuffer);
-        state->displayText =
-            state->rawBuffer.empty() ? std::string() : evaluateTelex(state->rawBuffer);
+        if (isLiteralEnding) {
+            state->displayText = lastRenderedBefore.substr(0, lastRenderedBefore.length() - 1);
+        } else {
+            state->displayText =
+                state->rawBuffer.empty() ? std::string() : evaluateTelex(state->rawBuffer);
+        }
         FCITX_DEBUG() << "UniikiTrace VISUAL_BACKSPACE"
                      << " eventId=" << eventId
                      << " rawBefore=" << rawBefore

@@ -247,6 +247,107 @@ class TestVietnameseEngine(unittest.TestCase):
         action, bcount, insert = self.engine.process_backspace()
         self.assertEqual(action, 'FORWARD')
 
+    def test_backspace_on_tones(self):
+        """Verify backspacing on 'chaof' step-by-step removes tone mark and then characters."""
+        self.engine.reset_buffer()
+        word = ""
+        for k in "chaof":
+            action, bcount, insert = self.engine.process_key(k)
+            if action == 'MODIFY':
+                word = word[:-bcount] + insert
+            elif action in ['APPEND', 'RESET']:
+                word += insert
+        self.assertEqual(word, "chào")
+
+        # BS 1: chào -> chua/chao
+        action, bcount, insert = self.engine.process_backspace()
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "chao")
+
+        # BS 2: chao -> cha
+        action, bcount, insert = self.engine.process_backspace()
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "cha")
+
+        # BS 3: cha -> ch
+        action, bcount, insert = self.engine.process_backspace()
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "ch")
+
+        # BS 4: ch -> c
+        action, bcount, insert = self.engine.process_backspace()
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "c")
+
+        # BS 5: c -> ""
+        action, bcount, insert = self.engine.process_backspace()
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "")
+
+    def test_backspace_on_stroked_d(self):
+        """Verify backspacing on stroked 'dd' step-by-step reverts to 'd' and then empty."""
+        self.engine.reset_buffer()
+        word = ""
+        for k in "dd":
+            action, bcount, insert = self.engine.process_key(k)
+            if action == 'MODIFY':
+                word = word[:-bcount] + insert
+            elif action in ['APPEND', 'RESET']:
+                word += insert
+        self.assertEqual(word, "đ")
+
+        # BS 1: đ -> d
+        action, bcount, insert = self.engine.process_backspace()
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "d")
+
+        # BS 2: d -> ""
+        action, bcount, insert = self.engine.process_backspace()
+        word = word[:-bcount] + insert
+        self.assertEqual(word, "")
+
+    def test_backspace_on_cuire(self):
+        """Verify backspacing on 'cuire' removes 'e' to leave 'cuir' instead of reverting to 'củi'."""
+        self.engine.reset_buffer()
+        word = ""
+        for k in "cuire":
+            action, bcount, insert = self.engine.process_key(k)
+            if action == 'MODIFY':
+                word = word[:-bcount] + insert if bcount > 0 else word + insert
+            elif action in ['APPEND', 'RESET']:
+                word += insert
+        self.assertEqual(word, "cuire")
+
+        # BS 1: cuire -> cuir
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual((action, bcount, insert), ('MODIFY', 1, ''))
+        word = word[:-bcount] + insert if bcount > 0 else word + insert
+        self.assertEqual(word, "cuir")
+
+        # BS 2: cuir -> cui
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual((action, bcount, insert), ('MODIFY', 1, ''))
+        word = word[:-bcount] + insert if bcount > 0 else word + insert
+        self.assertEqual(word, "cui")
+
+        # BS 3: cui -> cu
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual((action, bcount, insert), ('MODIFY', 1, ''))
+        word = word[:-bcount] + insert if bcount > 0 else word + insert
+        self.assertEqual(word, "cu")
+
+        # BS 4: cu -> c
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual((action, bcount, insert), ('MODIFY', 1, ''))
+        word = word[:-bcount] + insert if bcount > 0 else word + insert
+        self.assertEqual(word, "c")
+
+        # BS 5: c -> ""
+        action, bcount, insert = self.engine.process_backspace()
+        self.assertEqual((action, bcount, insert), ('MODIFY', 1, ''))
+        word = word[:-bcount] + insert if bcount > 0 else word + insert
+        self.assertEqual(word, "")
+
     def test_raw_backspace_reconverts_word(self):
         raw_keys = list("chuaw")
         self.assertEqual(self.engine._evaluate_telex_sequence(raw_keys), "chưa")

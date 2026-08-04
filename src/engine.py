@@ -83,6 +83,7 @@ class VietnameseEngine:
 
     def reset_buffer(self):
         self.raw_keys = []
+        self.history_stack = []
 
     def set_mode(self, mode):
         self.mode = mode.lower()
@@ -99,15 +100,28 @@ class VietnameseEngine:
             return self._process_telex(char)
         else:
             self.raw_keys.append(char)
+            current_word = "".join(self.raw_keys)
+            self.history_stack.append((list(self.raw_keys), current_word))
             return ('APPEND', 0, char)
 
     def process_backspace(self):
-        if not self.raw_keys:
+        if not self.history_stack or not self.raw_keys:
+            self.reset_buffer()
             return ('FORWARD', 0, '')
 
-        current_word = self.get_current_word()
-        self.raw_keys.pop()
-        new_word = self.get_current_word()
+        # Pop current state snapshot
+        _, current_word = self.history_stack.pop()
+        popped_key = self.raw_keys.pop()
+
+        if self.history_stack:
+            prev_raw_keys, prev_word = self.history_stack[-1]
+            if current_word.lower().endswith(popped_key.lower()):
+                new_word = current_word[:-len(popped_key)]
+                self.history_stack[-1] = (list(self.raw_keys), new_word)
+            else:
+                new_word = prev_word
+        else:
+            new_word = ''
 
         if new_word != current_word:
             prefix_len = 0
@@ -208,16 +222,16 @@ class VietnameseEngine:
             prefix_len = 0
             min_len = min(len(current_word), len(new_word))
             while prefix_len < min_len and current_word[prefix_len] == new_word[prefix_len]:
-                if current_word[prefix_len] in VN_VOWELS:
-                    break
                 prefix_len += 1
 
             backspace_count = len(current_word) - prefix_len
             insert_str = new_word[prefix_len:]
             self.raw_keys.append(char)
+            self.history_stack.append((list(self.raw_keys), new_word))
             return ('MODIFY', backspace_count, insert_str)
         else:
             self.raw_keys.append(char)
+            self.history_stack.append((list(self.raw_keys), new_word))
             return ('APPEND', 0, char)
 
     def get_current_word(self):
