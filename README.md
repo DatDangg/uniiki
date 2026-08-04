@@ -25,7 +25,18 @@
 
 ## ⚡ Cài Đặt Nhanh
 
-### Cách 1: Nạp Addon Native Cho Fcitx5 (Khuyên Dùng)
+### 🚀 Cách 1: Cài Đặt Tự Động (Khuyên Dùng)
+
+Chạy lệnh duy nhất sau trong Terminal để tự động tải, biên dịch và cấu hình biến môi trường bộ gõ cho **Terminal, VS Code & Wayland**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DatDangg/uniiki/main/install.sh | bash
+```
+*(Nếu đã clone repository về máy, bạn chỉ cần mở terminal tại thư mục dự án và chạy: `./install.sh`)*
+
+---
+
+### 🛠️ Cách 2: Biên Dịch & Cài Đặt Thủ Công (CMake)
 
 Yêu cầu cài đặt các gói phụ thuộc trên Ubuntu/Debian:
 ```bash
@@ -33,7 +44,7 @@ sudo apt update
 sudo apt install -y cmake extra-cmake-modules g++ pkg-config fcitx5 libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev
 ```
 
-Biên dịch và cài đặt vào hệ thống:
+Biên dịch và cài đặt Addon Native vào hệ thống:
 ```bash
 git clone https://github.com/DatDangg/uniiki.git
 cd uniiki
@@ -43,7 +54,16 @@ sudo cmake --install build/fcitx5
 sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor/ && fcitx5-remote -r
 ```
 
-> **Sau khi cài đặt:**
+> **📌 BẮT BUỘC: Cấu hình biến môi trường để gõ được tiếng Việt trên Terminal & Wayland:**
+> Để Terminal (GNOME Terminal, VS Code, Alacritty...) nhận bộ gõ Fcitx5 trên Wayland, chạy 2 lệnh sau:
+> ```bash
+> mkdir -p ~/.config/environment.d
+> echo -e "GTK_IM_MODULE=fcitx\nQT_IM_MODULE=fcitx\nXMODIFIERS=@im=fcitx" > ~/.config/environment.d/50-fcitx5.conf
+> echo -e "\nexport GTK_IM_MODULE=fcitx\nexport QT_IM_MODULE=fcitx\nexport XMODIFIERS=@im=fcitx" >> ~/.bashrc
+> source ~/.bashrc
+> ```
+
+> **Sau khi cài đặt xong:**
 > 1. Mở ứng dụng **Fcitx5 Configuration** (Cấu hình Fcitx5).
 > 2. Nhấn nút **`+`** (Thêm bộ gõ), bỏ chọn *"Only Show Current Language"*.
 > 3. Tìm từ khóa **Uniiki** và chọn **Add**.
