@@ -54,14 +54,25 @@ sudo cmake --install build/fcitx5
 sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor/ && fcitx5-remote -r
 ```
 
-> **📌 BẮT BUỘC: Cấu hình biến môi trường để gõ được tiếng Việt trên Terminal & Wayland:**
-> Để Terminal (GNOME Terminal, VS Code, Alacritty...) nhận bộ gõ Fcitx5 trên Wayland, chạy 2 lệnh sau:
+> **📌 BẮT BUỘC: Cấu hình biến môi trường để gõ tiếng Việt trên Terminal & Wayland:**
+> Copy và dán khối lệnh sau vào Terminal:
 > ```bash
 > mkdir -p ~/.config/environment.d
-> echo -e "GTK_IM_MODULE=fcitx\nQT_IM_MODULE=fcitx\nXMODIFIERS=@im=fcitx" > ~/.config/environment.d/50-fcitx5.conf
-> echo -e "\nexport GTK_IM_MODULE=fcitx\nexport QT_IM_MODULE=fcitx\nexport XMODIFIERS=@im=fcitx" >> ~/.bashrc
-> source ~/.bashrc
+> cat << 'EOF' > ~/.config/environment.d/50-fcitx5.conf
+> GTK_IM_MODULE=fcitx
+> QT_IM_MODULE=fcitx
+> XMODIFIERS=@im=fcitx
+> EOF
+>
+> cat << 'EOF' >> ~/.bashrc
+>
+> export GTK_IM_MODULE=fcitx
+> export QT_IM_MODULE=fcitx
+> export XMODIFIERS=@im=fcitx
+> EOF
 > ```
+> 
+> **⚠️ LƯU Ý QUAN TRỌNG:** Lệnh `source ~/.bashrc` chỉ cập nhật lệnh shell. Bạn phải **TẮT HẲN CỬA SỔ TERMINAL HIỆN TẠI VÀ MỞ LẠI CỬA SỔ TERMINAL MỚI** (hoặc Log out đăng nhập lại) thì cửa sổ ứng dụng Terminal mới nhận diện được bộ gõ `GTK_IM_MODULE=fcitx`.
 
 > **Sau khi cài đặt xong:**
 > 1. Mở ứng dụng **Fcitx5 Configuration** (Cấu hình Fcitx5).
