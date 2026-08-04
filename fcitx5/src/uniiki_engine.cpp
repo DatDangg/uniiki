@@ -2785,25 +2785,24 @@ void UniikiEngine::renderDirectCommit(InputContext *ic, UniikiState &state,
     auto candidate = normalizeNFC(state.displayText);
     const auto inputVersion = state.revision;
     const auto commitId = ++state.nextCommitId;
+    auto [deleteCount, insertText] = replacementDelta(lastRenderedBefore, candidate);
 
     auto capabilities = ic->capabilityFlags();
     if (!capabilities.test(CapabilityFlag::SurroundingText)) {
-        InternalCommitGuard internalCommit(state);
-        if (candidate.empty()) {
-            ic->inputPanel().reset();
-        } else {
-            Text preedit(candidate);
-            ic->inputPanel().setClientPreedit(preedit);
+        for (size_t i = 0; i < deleteCount; ++i) {
+            ic->forwardKey(Key(FcitxKey_BackSpace), false);
+            ic->forwardKey(Key(FcitxKey_BackSpace), true);
         }
-        ic->updatePreedit();
-        ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+        if (!insertText.empty()) {
+            InternalCommitGuard internalCommit(state);
+            ic->commitString(insertText);
+        }
         state.lastRenderedText = candidate;
         state.lastAppliedRawBuffer = state.rawBuffer;
         state.appliedRevision = state.revision;
         state.directActive = !candidate.empty();
         return;
     }
-    auto [deleteCount, insertText] = replacementDelta(lastRenderedBefore, candidate);
     const auto operation =
         deleteCount > 0
             ? UniikiState::RenderOperation::ReplaceSuffix
@@ -3444,16 +3443,6 @@ void UniikiEngine::fallbackCommitRaw(InputContext *ic, UniikiState &state, const
 void UniikiEngine::finishDirectComposition(InputContext *ic, UniikiState &state,
                                            const std::string &boundary,
                                            bool commitBoundary) const {
-    auto capabilities = ic->capabilityFlags();
-    if (!capabilities.test(CapabilityFlag::SurroundingText)) {
-        if (!state.displayText.empty()) {
-            InternalCommitGuard internalCommit(state);
-            ic->commitString(normalizeNFC(state.displayText));
-        }
-        ic->inputPanel().reset();
-        ic->updatePreedit();
-        ic->updateUserInterface(UserInterfaceComponent::InputPanel);
-    }
     auto recoverRawBuffer = boundary == " " ? state.rawBuffer : std::string("");
     auto recoverRenderedText = boundary == " " ? state.lastRenderedText : std::string("");
     if (commitBoundary && !boundary.empty()) {
