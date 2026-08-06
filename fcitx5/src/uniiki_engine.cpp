@@ -147,9 +147,13 @@ bool isRawVowel(char ch) {
 }
 
 bool hasUpperAfterFirst(const std::string &raw) {
-    for (size_t i = 1; i < raw.size(); ++i) {
-        if (std::isupper(static_cast<unsigned char>(raw[i])) &&
-            std::tolower(static_cast<unsigned char>(raw[i])) != 'w') {
+    bool seenLower = false;
+    for (size_t i = 0; i < raw.size(); ++i) {
+        char ch = raw[i];
+        if (std::islower(static_cast<unsigned char>(ch))) {
+            seenLower = true;
+        } else if (seenLower && std::isupper(static_cast<unsigned char>(ch)) &&
+                   std::tolower(static_cast<unsigned char>(ch)) != 'w') {
             return true;
         }
     }
@@ -206,6 +210,9 @@ bool isLikelyEnglishRawShape(const std::string &rawLower) {
     };
     for (const auto &cluster : englishInitialClusters) {
         if (rawLower.rfind(cluster, 0) == 0) {
+            if (cluster == "wr" && (rawLower.size() <= 2 || !isRawVowel(rawLower[2]))) {
+                continue;
+            }
             return true;
         }
     }
@@ -229,7 +236,7 @@ bool isLikelyEnglishRawShape(const std::string &rawLower) {
     }
     static const std::unordered_set<std::string> medialClusters = {
         "sk", "sp", "rd", "rs", "rl",
-        "xt", "xl", "xy", "cl", "ts",
+        "xt", "xl", "cl", "ts",
     };
     static const std::unordered_set<std::string> vowelSequences = {
         "a", "e", "i", "o", "u", "y", "aa", "ee", "oo", "ai", "ao", "au", "ay", "eo", "eu",
@@ -646,6 +653,16 @@ ToneLexResult lexAndReduceToneActions(const std::string &raw) {
             continue;
         }
         escapeSequenceKey = 0;
+        if (key == 'z' && result.history.activeTone == TONE_NONE) {
+            result.baseLetters.push_back(raw[i]);
+            result.tokens.push_back(
+                {i, raw[i], RawKeyOwnership::LiteralLetter});
+            if (establishesVowel) {
+                vowelSeen = true;
+            }
+            continue;
+        }
+
         if (!vowelSeen || !isToneKey(key) || !isValidVietnameseInitialStr(raw, i)) {
             result.baseLetters.push_back(raw[i]);
             result.tokens.push_back(
@@ -771,7 +788,8 @@ std::string vowelWithTone(char base, int mark, int tone, bool upper = false) {
         {"y0", {"Y", "Ý", "Ỳ", "Ỷ", "Ỹ", "Ỵ"}},
     };
     const auto &table = upper ? upperTable : lowerTable;
-    auto it = table.find(std::string{base} + std::to_string(mark));
+    char lowerBase = static_cast<char>(std::tolower(static_cast<unsigned char>(base)));
+    auto it = table.find(std::string{lowerBase} + std::to_string(mark));
     if (it == table.end()) {
         char text = upper ? static_cast<char>(std::toupper(static_cast<unsigned char>(base))) : base;
         return std::string(1, text);
@@ -1882,7 +1900,10 @@ void UniikiEngine::keyEvent(const InputMethodEntry &, KeyEvent &event) {
     auto physicalKey = event.key().toString();
     auto keyStateValue = event.key().states().toInteger();
     bool isRepeat = (keyStateValue & static_cast<uint32_t>(KeyState::Repeat)) != 0;
-    bool hasNonRepeatState = (keyStateValue & ~static_cast<uint32_t>(KeyState::Repeat)) != 0;
+    uint32_t allowedStates = static_cast<uint32_t>(KeyState::Repeat) |
+                            static_cast<uint32_t>(KeyState::Shift) |
+                            static_cast<uint32_t>(KeyState::CapsLock);
+    bool hasNonRepeatState = (keyStateValue & ~allowedStates) != 0;
     auto rawBufferBefore = state->rawBuffer;
     const bool internalCommitAtEntry = state->isInternalCommit;
     auto candidateBefore = state->displayText;
@@ -2203,6 +2224,14 @@ void UniikiEngine::keyEvent(const InputMethodEntry &, KeyEvent &event) {
                      << " oldRendered=" << state->lastRenderedText;
     }
 
+    if (sym == FcitxKey_BackSpace) {
+        const auto &surrounding = ic->surroundingText();
+        if (surrounding.isValid() && surrounding.anchor() != surrounding.cursor()) {
+            state->reset();
+            return;
+        }
+    }
+
     if (sym == FcitxKey_BackSpace && !state->rawBuffer.empty()) {
         event.filterAndAccept();
         handledByEngine = true;
@@ -2225,10 +2254,11 @@ void UniikiEngine::keyEvent(const InputMethodEntry &, KeyEvent &event) {
             }
         }
 
-        state->rawBuffer = rawAfterVisualBackspace(state->rawBuffer);
         if (isLiteralEnding) {
+            state->rawBuffer = rawBefore.substr(0, rawBefore.length() - 1);
             state->displayText = lastRenderedBefore.substr(0, lastRenderedBefore.length() - 1);
         } else {
+            state->rawBuffer = rawAfterVisualBackspace(state->rawBuffer);
             state->displayText =
                 state->rawBuffer.empty() ? std::string() : evaluateTelex(state->rawBuffer);
         }
@@ -2253,6 +2283,9 @@ void UniikiEngine::keyEvent(const InputMethodEntry &, KeyEvent &event) {
             deleteCalled = renderDelta.first > 0;
             commitCalled = !renderDelta.second.empty();
             renderDirectCommit(ic, *state, "BackSpace", rawBefore, lastRenderedBefore, eventId);
+            if (state->rawBuffer.empty()) {
+                state->reset();
+            }
             resetCalled = true;
             resetReason = "BackSpace rendered grapheme";
         } else {
@@ -3493,7 +3526,6 @@ std::string UniikiEngine::evaluateTelex(const std::string &raw) {
     if (shouldProtectRawWord(raw, rawLower) ||
         isLikelyEnglishRawShape(rawLower) ||
         hasInvalidWoContinuation(rawLower) ||
-        (!isDoubleWEscape(raw) && raw.size() >= 2 && hasUpperAfterFirst(raw)) ||
         std::any_of(raw.begin(), raw.end(), [](char ch) {
             return std::isdigit(static_cast<unsigned char>(ch)) || ch == '.' ||
                    ch == '/' || ch == '@' || ch == ':' || ch == '-';
@@ -3611,9 +3643,6 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
         return evaluateRawEscaped(raw);
     }
 
-    if (!isDoubleWEscape(raw) && raw.size() >= 2 && hasUpperAfterFirst(raw)) {
-        return raw;
-    }
 
     if (std::any_of(raw.begin(), raw.end(), [](char ch) {
             return std::isdigit(static_cast<unsigned char>(ch)) || ch == '.' || ch == '/' ||
@@ -3811,9 +3840,9 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
             ownsShapeAction(i + 1, i, false)) {
             if (lower == 'o' && !cells.empty() && isVowelCell(cells.back()) &&
                 cells.back().base == 'u' && cells.back().mark == 3) {
-                cells.push_back(vowelCell('o', 3));
+                cells.push_back(vowelCell('o', 3, TONE_NONE, std::isupper(static_cast<unsigned char>(ch))));
             } else {
-                cells.push_back(vowelCell(lower, 1));
+                cells.push_back(vowelCell(lower, 1, TONE_NONE, std::isupper(static_cast<unsigned char>(ch))));
             }
             ++i;
             continue;
@@ -3832,7 +3861,7 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
                     break;
                 }
                 seenVowel = true;
-                if (it->base == lower && it->mark == 0) {
+                if (it->base == lower) {
                     if (ownsLateShapeAction(
                             i, trailingConsonants > 0)) {
                         it->mark = 1;
@@ -3995,7 +4024,7 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
             const size_t nucleusStart = firstNucleusCellIndex(cells);
             for (size_t index = cells.size(); index > nucleusStart; --index) {
                 auto &cell = cells[index - 1];
-                if (isVowelCell(cell) && cell.mark == 0) {
+                if (isVowelCell(cell)) {
                     if (cell.base == 'a') {
                         wModifiedMarks = {{index - 1, cell.mark}};
                         cell.mark = 2;

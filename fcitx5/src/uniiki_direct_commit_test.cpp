@@ -17,6 +17,7 @@ bool contains(const std::string &text, const std::string &part) {
 } // namespace
 
 int main() {
+    std::cerr << "evaluateTelex('DD') = " << fcitx::UniikiEngine::evaluateTelexForTest("DD") << '\n';
     const auto [ddDelete, ddCommit] =
         fcitx::UniikiEngine::replacementDeltaForTest("d", "đ");
     if (ddDelete != 1 || ddCommit != "đ") {
@@ -34,7 +35,10 @@ int main() {
 
     const std::vector<std::pair<std::string, std::string>> visibleCases = {
         {"canaf", "cần"}, {"bene", "bên"},
-        {"dd", "đ"}, {"oroooo", "ỏoooo"},
+        {"dd", "đ"}, {"DD", "Đ"}, {"DDAAU", "ĐÂU"}, {"DAASU", "DẤU"}, {"NAXY", "NÃY"},
+        {"DDaafu", "Đầu"}, {"DDaau", "Đâu"}, {"DDangw", "Đăng"}, {"Quoocs", "Quốc"},
+        {"tiEEfn", "tiỀn"}, {"cAAfn", "cẦn"}, {"wr", "ử"}, {"aaw", "ă"}, {"oow", "ơ"},
+        {"oroooo", "ỏoooo"},
         {"gox\b", "g"}, {"gos\b", "g"},
         {"gaa\b", "g"}, {"gaw\b", "g"},
         {"gow\b", "g"}, {"guw\b", "g"},

@@ -41,11 +41,11 @@ CHAR_DECOMPOSE['đ'] = ('d', 'stroke', 0)
 CHAR_DECOMPOSE['Đ'] = ('D', 'stroke', 0)
 
 TELEX_TONE_KEYS = {
-    's': TONES['SAC'],
-    'f': TONES['HUYEN'],
-    'r': TONES['HOI'],
-    'x': TONES['NGA'],
-    'j': TONES['NANG'],
+    's': TONES['SAC'], 'S': TONES['SAC'],
+    'f': TONES['HUYEN'], 'F': TONES['HUYEN'],
+    'r': TONES['HOI'], 'R': TONES['HOI'],
+    'x': TONES['NGA'], 'X': TONES['NGA'],
+    'j': TONES['NANG'], 'J': TONES['NANG'],
 }
 
 CONSONANT_CLUSTERS = {'scr', 'str', 'spl', 'spr', 'sch', 'thr', 'phr', 'chr'}
@@ -406,14 +406,15 @@ class VietnameseEngine:
             return raw_str
 
         # CamelCase protection
-        is_double_w_escape = (
-            len(raw_str) == 2 and all(c.lower() == 'w' for c in raw_str)
-        )
-        if (
-            not is_double_w_escape
-            and len(raw_str) >= 2
-            and any(c.isupper() and c.lower() != 'w' for c in raw_str[1:])
-        ):
+        seen_lower = False
+        has_upper_after_lower = False
+        for ch in raw_str:
+            if ch.islower():
+                seen_lower = True
+            elif seen_lower and ch.isupper() and ch.lower() != 'w':
+                has_upper_after_lower = True
+                break
+        if has_upper_after_lower:
             return raw_str
 
         res_chars = []
@@ -475,12 +476,12 @@ class VietnameseEngine:
                 late_mark_idx = self._find_late_mark_target(res_chars, lk)
                 if late_mark_idx is not None:
                     mark_map = {
-                        'a': {'a': 'â', 'á': 'ấ', 'à': 'ầ', 'ả': 'ẩ', 'ã': 'ẫ', 'ạ': 'ậ',
-                              'A': 'Â', 'Á': 'Ấ', 'À': 'Ầ', 'Ả': 'Ẩ', 'Ã': 'Ẫ', 'Ạ': 'Ậ'},
+                        'a': {'a': 'â', 'ă': 'â', 'á': 'ấ', 'à': 'ầ', 'ả': 'ẩ', 'ã': 'ẫ', 'ạ': 'ậ',
+                              'A': 'Â', 'Ă': 'Â', 'Á': 'Ấ', 'À': 'Ầ', 'Ả': 'Ẩ', 'Ã': 'Ẫ', 'Ạ': 'Ậ'},
                         'e': {'e': 'ê', 'é': 'ế', 'è': 'ề', 'ẻ': 'ể', 'ẽ': 'ễ', 'ẹ': 'ệ',
                               'E': 'Ê', 'É': 'Ế', 'È': 'Ề', 'Ẻ': 'Ể', 'Ẽ': 'Ễ', 'Ẹ': 'Ệ'},
-                        'o': {'o': 'ô', 'ó': 'ố', 'ò': 'ồ', 'ỏ': 'ổ', 'õ': 'ỗ', 'ọ': 'ộ',
-                              'O': 'Ô', 'Ó': 'Ố', 'Ò': 'Ồ', 'Ỏ': 'Ổ', 'Õ': 'Ỗ', 'Ọ': 'Ộ'},
+                        'o': {'o': 'ô', 'ơ': 'ô', 'ó': 'ố', 'ò': 'ồ', 'ỏ': 'ổ', 'õ': 'ỗ', 'ọ': 'ộ',
+                              'O': 'Ô', 'Ơ': 'Ô', 'Ó': 'Ố', 'Ò': 'Ồ', 'Ỏ': 'Ổ', 'Õ': 'Ỗ', 'Ọ': 'Ộ'},
                     }
                     res_chars[late_mark_idx] = mark_map[lk][res_chars[late_mark_idx]]
                     i += 1
@@ -551,7 +552,11 @@ class VietnameseEngine:
                     continue
                 
                 hook_applied = False
-                v_hook_map = {'a': 'ă', 'A': 'Ă', 'o': 'ơ', 'O': 'Ơ', 'u': 'ư', 'U': 'Ư'}
+                v_hook_map = {
+                    'a': 'ă', 'A': 'Ă', 'â': 'ă', 'Â': 'Ă',
+                    'o': 'ơ', 'O': 'Ơ', 'ô': 'ơ', 'Ô': 'Ơ',
+                    'u': 'ư', 'U': 'Ư'
+                }
                 for idx in range(len(res_chars) - 1, -1, -1):
                     if res_chars[idx] in v_hook_map:
                         previous_char = res_chars[idx]
@@ -593,7 +598,16 @@ class VietnameseEngine:
                 i += 2
                 continue
 
-            if (lk in TELEX_TONE_KEYS or lk == 'z') and (has_vowel_already or (res_chars and has_future_vowel)) and self._is_valid_initial_cluster(res_chars):
+            if lk == 'z':
+                if active_tone != TONES['NONE']:
+                    active_tone = TONES['NONE']
+                    active_tone_action = None
+                else:
+                    res_chars.append(k)
+                i += 1
+                continue
+
+            if lk in TELEX_TONE_KEYS and (has_vowel_already or (res_chars and has_future_vowel)) and self._is_valid_initial_cluster(res_chars):
                 tail = "".join(res_chars).lower() + lk
                 if not has_vowel_already and any(cluster.startswith(tail) for cluster in VN_INITIAL_CLUSTERS):
                     res_chars.append(k)
