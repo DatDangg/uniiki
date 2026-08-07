@@ -70,17 +70,6 @@ EOF
 
 ---
 
-## ⌨️ Bảng Quy Tắc Gõ Telex
-
-| Thao tác | Phím gõ | Kết quả ví dụ |
-| :--- | :--- | :--- |
-| **Dấu thanh** | `s` (Sắc), `f` (Huyền), `r` (Hỏi), `x` (Ngã), `j` (Nặng), `z` (Xóa dấu) | `as` $\rightarrow$ `á`, `af` $\rightarrow$ `à`, `az` $\rightarrow$ `a` |
-| **Mũ chữ** | `aa` $\rightarrow$ `â`, `ee` $\rightarrow$ `ê`, `oo` $\rightarrow$ `ô` | `daang` $\rightarrow$ `đang` |
-| **Móc / Trăng**| `aw` $\rightarrow$ `ă`, `ow` $\rightarrow$ `ơ`, `uw` / `w` $\rightarrow$ `ư` | `nawmg` $\rightarrow$ `năm`, `muonw` $\rightarrow$ `mượn` |
-| **Chữ Đ** | `dd` $\rightarrow$ `đ` | `ddang` $\rightarrow$ `đang` |
-
----
-
 ## 🔄 Tự Động Khởi Động (Autostart)
 
 Để Uniiki tự chạy mỗi khi bạn đăng nhập Ubuntu:
