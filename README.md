@@ -62,10 +62,11 @@ EOF
 
 > **⚠️ LƯU Ý QUAN TRỌNG:** Lệnh `source ~/.bashrc` chỉ cập nhật lệnh shell. Bạn phải **TẮT HẲN CỬA SỔ TERMINAL HIỆN TẠI VÀ MỞ LẠI CỬA SỔ TERMINAL MỚI** (hoặc Log out đăng nhập lại) thì cửa sổ ứng dụng Terminal mới nhận diện được bộ gõ `GTK_IM_MODULE=fcitx`.
 
-4. **Kích hoạt bộ gõ:**
-> 1. Mở ứng dụng **Fcitx5 Configuration** (Cấu hình Fcitx5).
-> 2. Nhấn nút **`+`** (Thêm bộ gõ), bỏ chọn *"Only Show Current Language"*.
-> 3. Tìm từ khóa **Uniiki** và chọn **Add**.
+4. **Kích hoạt bộ gõ (Sau khi đã Log out và Log in lại):**
+> 1. Mở **Fcitx5 Configuration** (tìm trong menu ứng dụng hoặc chạy `fcitx5-configtool` trong Terminal).
+> 2. Tìm **Uniiki** ở cột bên phải.
+> 3. Nhấn mũi tên **`<`** để thêm nó sang cột bên trái.
+> 4. Bấm **Apply** để lưu thay đổi.
 
 ---
 
