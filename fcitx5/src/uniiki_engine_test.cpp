@@ -41,6 +41,12 @@ int main() {
     }
 
     const std::vector<std::pair<std::string, std::string>> cases = {
+        {"mama", "mâm"},
+        {"mamaa", "mama"},
+        {"meme", "mêm"},
+        {"memee", "meme"},
+        {"como", "côm"},
+        {"comoo", "como"},
         {"heo", "heo"},
         {"d", "d"},
         {"dd", "đ"},

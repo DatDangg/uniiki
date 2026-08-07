@@ -431,10 +431,21 @@ class TestVietnameseEngine(unittest.TestCase):
             ("toio", "tôi"),
             ("bojo", "bộ"),
             ("dangd", "dangd"),
-            ("trana", "trana"),
-            ("trono", "trono"),
+            ("trana", "trân"),
+            ("tranaa", "trana"),
+            ("trono", "trôn"),
+            ("tronoo", "trono"),
             ("hoawcj", "hoặc"),
             ("ngoafi", "ngoài"),
+            ("mama", "mâm"),
+            ("mamaa", "mama"),
+            ("mamaaa", "mamaa"),
+            ("meme", "mêm"),
+            ("memee", "meme"),
+            ("como", "côm"),
+            ("comoo", "como"),
+            ("mams", "mám"),
+            ("mamsa", "mấm"),
         ]
 
         for raw_keys, expected in tests:

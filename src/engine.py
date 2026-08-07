@@ -40,6 +40,29 @@ for (base_vowel, hat), char_list in VOWEL_MATRIX.items():
 CHAR_DECOMPOSE['đ'] = ('d', 'stroke', 0)
 CHAR_DECOMPOSE['Đ'] = ('D', 'stroke', 0)
 
+ADD_HAT_MAP = {
+    'a': {'a': 'â', 'ă': 'â', 'á': 'ấ', 'à': 'ầ', 'ả': 'ẩ', 'ã': 'ẫ', 'ạ': 'ậ',
+          'A': 'Â', 'Ă': 'Â', 'Á': 'Ấ', 'À': 'Ầ', 'Ả': 'Ẩ', 'Ã': 'Ẫ', 'Ạ': 'Ậ',
+          'ắ': 'ấ', 'ằ': 'ầ', 'ẳ': 'ẩ', 'ẵ': 'ẫ', 'ặ': 'ậ',
+          'Ắ': 'Ấ', 'Ằ': 'Ầ', 'Ẳ': 'Ẩ', 'Ẵ': 'Ẫ', 'Ặ': 'Ậ'},
+    'e': {'e': 'ê', 'é': 'ế', 'è': 'ề', 'ẻ': 'ể', 'ẽ': 'ễ', 'ẹ': 'ệ',
+          'E': 'Ê', 'É': 'Ế', 'È': 'Ề', 'Ẻ': 'Ể', 'Ẽ': 'Ễ', 'Ẹ': 'Ệ'},
+    'o': {'o': 'ô', 'ơ': 'ô', 'ó': 'ố', 'ò': 'ồ', 'ỏ': 'ổ', 'õ': 'ỗ', 'ọ': 'ộ',
+          'O': 'Ô', 'Ơ': 'Ô', 'Ó': 'Ố', 'Ò': 'Ồ', 'Ỏ': 'Ổ', 'Õ': 'Ỗ', 'Ọ': 'Ộ',
+          'ớ': 'ố', 'ờ': 'ồ', 'ở': 'ổ', 'ỡ': 'ỗ', 'ợ': 'ộ',
+          'Ớ': 'Ố', 'Ờ': 'Ồ', 'Ở': 'Ổ', 'Ỡ': 'Ỗ', 'Ợ': 'Ộ'},
+}
+
+REMOVE_HAT_MAP = {
+    'a': {'â': 'a', 'ấ': 'á', 'ầ': 'à', 'ẩ': 'ả', 'ẫ': 'ã', 'ậ': 'ạ',
+          'Â': 'A', 'Ấ': 'Á', 'Ầ': 'À', 'Ẩ': 'Ả', 'Ẫ': 'Ã', 'Ậ': 'Ạ'},
+    'e': {'ê': 'e', 'ế': 'é', 'ề': 'è', 'ể': 'ẻ', 'ễ': 'ẽ', 'ệ': 'ẹ',
+          'Ê': 'E', 'Ế': 'É', 'Ề': 'È', 'Ể': 'Ẻ', 'Ễ': 'Ẽ', 'Ệ': 'Ẹ'},
+    'o': {'ô': 'o', 'ố': 'ó', 'ồ': 'ò', 'ổ': 'ỏ', 'ỗ': 'õ', 'ộ': 'ọ',
+          'Ô': 'O', 'Ố': 'Ó', 'Ồ': 'Ò', 'Ổ': 'Ỏ', 'Ỗ': 'Õ', 'Ộ': 'Ọ'},
+}
+
+
 TELEX_TONE_KEYS = {
     's': TONES['SAC'], 'S': TONES['SAC'],
     'f': TONES['HUYEN'], 'F': TONES['HUYEN'],
@@ -237,6 +260,18 @@ class VietnameseEngine:
     def get_current_word(self):
         return self._evaluate_telex_sequence(self.raw_keys)
 
+    def _is_late_hat_modifier(self, segment_keys, lower):
+        if lower not in ['a', 'e', 'o']:
+            return False
+        for k in segment_keys:
+            if k in CHAR_DECOMPOSE:
+                base = CHAR_DECOMPOSE[k][0].lower()
+            else:
+                base = k.lower()
+            if base == lower:
+                return True
+        return False
+
     def _split_raw_segments(self, keys):
         if not keys:
             return []
@@ -261,6 +296,9 @@ class VietnameseEngine:
                     continue
             if lower in 'aeiouy':
                 if has_vowel and coda:
+                    if lower in ['a', 'e', 'o'] and self._is_late_hat_modifier(keys[segment_start:index], lower):
+                        coda = ''
+                        continue
                     segments.append((segment_start, index))
                     segment_start = index
                 has_vowel = True
@@ -300,7 +338,7 @@ class VietnameseEngine:
             'linux', 'raw', 'javascript', 'typescript', 'telex', 'vni',
             'terminal', 'code', 'chrome', 'firefox', 'libreoffice',
             'telegram', 'discord', 'zalo', 'web', 'latinh', 'pre', 'test',
-            'best'
+            'best', 'data', 'apple', 'start', 'friend', 'work'
         }
         if raw_lower in protected_words:
             return raw_str
@@ -385,7 +423,7 @@ class VietnameseEngine:
             'javascript', 'typescript', 'telex', 'vni',
             'terminal', 'code', 'chrome', 'firefox', 'libreoffice',
             'telegram', 'discord', 'zalo', 'web', 'latinh', 'pre', 'test',
-            'best'
+            'best', 'data', 'apple', 'start', 'friend', 'work'
         }
         protected_roots = {
             'tele', 'type', 'java', 'chrome', 'fire', 'libre',
@@ -452,40 +490,24 @@ class VietnameseEngine:
                 i += 1
                 continue
 
-            # 2. Consecutive double vowels: aa -> â, ee -> ê, oo -> ô
+            # 2. Consecutive double vowels or late hat modifiers: aa -> â, ee -> ê, oo -> ô
             if lk in ['a', 'e', 'o']:
-                if i + 1 < n and keys[i+1].lower() == lk:
-                    if lk == 'o' and res_chars and res_chars[-1] in ['ư', 'Ư']:
-                        res_chars.append('Ơ' if k.isupper() else 'ơ')
-                        i += 2
-                        continue
-                    hat_map = {'a': 'â', 'e': 'ê', 'o': 'ô'}
-                    hat_c = hat_map[lk].upper() if k.isupper() else hat_map[lk]
-                    res_chars.append(hat_c)
+                if lk == 'o' and i + 1 < n and keys[i+1].lower() == 'o' and res_chars and res_chars[-1] in ['ư', 'Ư']:
+                    res_chars.append('Ơ' if k.isupper() else 'ơ')
                     i += 2
                     continue
-                elif res_chars and res_chars[-1] in ['â', 'Â', 'ê', 'Ê', 'ô', 'Ô']:
-                    last_c = res_chars[-1]
-                    hat_to_base = {'â': 'a', 'Â': 'A', 'ê': 'e', 'Ê': 'E', 'ô': 'o', 'Ô': 'O'}
-                    if hat_to_base.get(last_c, '').lower() == lk:
-                        res_chars[-1] = hat_to_base[last_c]
+
+                hat_idx, hat_action = self._find_hat_target(res_chars, lk)
+                if hat_idx is not None:
+                    if hat_action == 'ADD_HAT':
+                        res_chars[hat_idx] = ADD_HAT_MAP[lk][res_chars[hat_idx]]
+                        i += 1
+                        continue
+                    elif hat_action == 'REMOVE_HAT':
+                        res_chars[hat_idx] = REMOVE_HAT_MAP[lk][res_chars[hat_idx]]
                         res_chars.append(k)
                         i += 1
                         continue
-
-                late_mark_idx = self._find_late_mark_target(res_chars, lk)
-                if late_mark_idx is not None:
-                    mark_map = {
-                        'a': {'a': 'â', 'ă': 'â', 'á': 'ấ', 'à': 'ầ', 'ả': 'ẩ', 'ã': 'ẫ', 'ạ': 'ậ',
-                              'A': 'Â', 'Ă': 'Â', 'Á': 'Ấ', 'À': 'Ầ', 'Ả': 'Ẩ', 'Ã': 'Ẫ', 'Ạ': 'Ậ'},
-                        'e': {'e': 'ê', 'é': 'ế', 'è': 'ề', 'ẻ': 'ể', 'ẽ': 'ễ', 'ẹ': 'ệ',
-                              'E': 'Ê', 'É': 'Ế', 'È': 'Ề', 'Ẻ': 'Ể', 'Ẽ': 'Ễ', 'Ẹ': 'Ệ'},
-                        'o': {'o': 'ô', 'ơ': 'ô', 'ó': 'ố', 'ò': 'ồ', 'ỏ': 'ổ', 'õ': 'ỗ', 'ọ': 'ộ',
-                              'O': 'Ô', 'Ơ': 'Ô', 'Ó': 'Ố', 'Ò': 'Ồ', 'Ỏ': 'Ổ', 'Õ': 'Ỗ', 'Ọ': 'Ộ'},
-                    }
-                    res_chars[late_mark_idx] = mark_map[lk][res_chars[late_mark_idx]]
-                    i += 1
-                    continue
 
             # 3. 'w' hooks: aw -> ă, ow -> ơ, uw -> ư, uow -> ươ, uocw -> ước, etc.
             if lk == 'w':
@@ -825,27 +847,34 @@ class VietnameseEngine:
             coda.append(ch.lower())
         return ''.join(coda) in VN_VALID_CODAS
 
-    def _find_late_mark_target(self, chars, base_vowel):
-        markable = {
-            'a': set('aáàảãạAÁÀẢÃẠ'),
+    def _find_hat_target(self, chars, base_vowel):
+        unhatted_map = {
+            'a': set('aáàảãạAÁÀẢÃẠăắằẳẵặĂẮẰẲẴẶ'),
             'e': set('eéèẻẽẹEÉÈẺẼẸ'),
-            'o': set('oóòỏõọOÓÒỎÕỌ'),
+            'o': set('oóòỏõọOÓÒỎÕỌơớờởỡợƠỚỜỞỠỢ'),
         }
-        if base_vowel not in markable:
-            return None
+        hatted_map = {
+            'a': set('âấầẩẫậÂẤẦẨẪẬ'),
+            'e': set('êếềểễệÊẾỀỂỄỆ'),
+            'o': set('ôốồổỗộÔỐỒỔỖỘ'),
+        }
+        if base_vowel not in unhatted_map:
+            return (None, None)
 
-        skipped_trailing_consonant = False
+        skipped_trailing_consonant = 0
         for idx in range(len(chars) - 1, -1, -1):
             ch = chars[idx]
             if ch not in VN_VOWELS and ch not in CHAR_DECOMPOSE:
-                if not skipped_trailing_consonant and ch.isalpha():
-                    skipped_trailing_consonant = True
+                if skipped_trailing_consonant < 2 and ch.isalpha():
+                    skipped_trailing_consonant += 1
                     continue
                 break
-            if ch in markable[base_vowel]:
-                return idx
+            if ch in unhatted_map[base_vowel]:
+                return (idx, 'ADD_HAT')
+            if ch in hatted_map[base_vowel]:
+                return (idx, 'REMOVE_HAT')
 
-        return None
+        return (None, None)
 
     def _apply_tone_to_word(self, word, tone):
         vowels_info = []

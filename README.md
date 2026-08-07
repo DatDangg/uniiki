@@ -4,7 +4,6 @@
 [![Linux](https://img.shields.io/badge/OS-Linux%20%2F%20Ubuntu-orange?logo=ubuntu)](https://ubuntu.com)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue?logo=cplusplus)](https://isocpp.org/)
 [![Fcitx5](https://img.shields.io/badge/Framework-Fcitx5-green)](https://fcitx-im.org/)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
 [![Zero Preedit](https://img.shields.io/badge/Feature-Zero--Preedit-brightgreen)]()
 
 **Uniiki** là bộ gõ tiếng Việt hiện đại chạy trên Ubuntu/Linux, hỗ trợ gõ **Telex** mượt mà trên **TẤT CẢ các ứng dụng** (Chrome, VS Code, Terminal, Telegram, Slack, Spotify...) mà **HOÀN TOÀN KHÔNG CẦN PREEDIT** (không có gạch chân xem trước, không bị nhấp nháy ô nhập liệu hay xung đột khung gõ).
@@ -23,28 +22,17 @@
 
 ---
 
-## ⚡ Cài Đặt Nhanh
+## ⚡ Cài Đặt
 
-### 🚀 Cách 1: Cài Đặt Tự Động (Khuyên Dùng)
+### 🛠️ Cài Đặt & Cấu Hình Fcitx5 Native Addon
 
-Chạy lệnh duy nhất sau trong Terminal để tự động tải, biên dịch và cấu hình biến môi trường bộ gõ cho **Terminal, VS Code & Wayland**:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/DatDangg/uniiki/main/install.sh | bash
-```
-*(Nếu đã clone repository về máy, bạn chỉ cần mở terminal tại thư mục dự án và chạy: `./install.sh`)*
-
----
-
-### 🛠️ Cách 2: Biên Dịch & Cài Đặt Thủ Công (CMake)
-
-Yêu cầu cài đặt các gói phụ thuộc trên Ubuntu/Debian:
+1. **Cài đặt các gói phụ thuộc (Ubuntu/Debian):**
 ```bash
 sudo apt update
 sudo apt install -y cmake extra-cmake-modules g++ pkg-config fcitx5 libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev
 ```
 
-Biên dịch và cài đặt Addon Native vào hệ thống:
+2. **Biên dịch và cài đặt Addon vào hệ thống:**
 ```bash
 git clone https://github.com/DatDangg/uniiki.git
 cd uniiki
@@ -54,27 +42,27 @@ sudo cmake --install build/fcitx5
 sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor/ && fcitx5-remote -r
 ```
 
-> **📌 BẮT BUỘC: Cấu hình biến môi trường để gõ tiếng Việt trên Terminal & Wayland:**
-> Copy và dán khối lệnh sau vào Terminal:
-> ```bash
-> mkdir -p ~/.config/environment.d
-> cat << 'EOF' > ~/.config/environment.d/50-fcitx5.conf
-> GTK_IM_MODULE=fcitx
-> QT_IM_MODULE=fcitx
-> XMODIFIERS=@im=fcitx
-> EOF
->
-> cat << 'EOF' >> ~/.bashrc
->
-> export GTK_IM_MODULE=fcitx
-> export QT_IM_MODULE=fcitx
-> export XMODIFIERS=@im=fcitx
-> EOF
-> ```
-> 
+3. **Cấu hình biến môi trường bộ gõ (Cho Terminal & Wayland):**
+Copy và dán khối lệnh sau vào Terminal:
+```bash
+mkdir -p ~/.config/environment.d
+cat << 'EOF' > ~/.config/environment.d/50-fcitx5.conf
+GTK_IM_MODULE=fcitx
+QT_IM_MODULE=fcitx
+XMODIFIERS=@im=fcitx
+EOF
+
+cat << 'EOF' >> ~/.bashrc
+
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+EOF
+```
+
 > **⚠️ LƯU Ý QUAN TRỌNG:** Lệnh `source ~/.bashrc` chỉ cập nhật lệnh shell. Bạn phải **TẮT HẲN CỬA SỔ TERMINAL HIỆN TẠI VÀ MỞ LẠI CỬA SỔ TERMINAL MỚI** (hoặc Log out đăng nhập lại) thì cửa sổ ứng dụng Terminal mới nhận diện được bộ gõ `GTK_IM_MODULE=fcitx`.
 
-> **Sau khi cài đặt xong:**
+4. **Kích hoạt bộ gõ:**
 > 1. Mở ứng dụng **Fcitx5 Configuration** (Cấu hình Fcitx5).
 > 2. Nhấn nút **`+`** (Thêm bộ gõ), bỏ chọn *"Only Show Current Language"*.
 > 3. Tìm từ khóa **Uniiki** và chọn **Add**.

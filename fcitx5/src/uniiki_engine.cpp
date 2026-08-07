@@ -468,6 +468,8 @@ bool shouldProtectRawWord(const std::string &raw, const std::string &rawLower) {
         "code", "chrome", "firefox", "libreoffice", "telegram", "discord",
         "zalo", "web", "latinh", "password", "desktop", "pre", "windows",
         "google", "version", "linux", "raw", "test", "best", "room",
+        "class", "data", "apple", "start", "friend", "work", "pass", "system",
+        "book", "food", "tool", "email", "feedback", "database", "address", "middleware"
     };
     static const std::vector<std::string> protectedRoots = {
         "tele", "type", "java", "chrome", "fire", "libre",
@@ -955,9 +957,16 @@ ParsedCandidate parseShapeCandidate(const std::string &raw,
                 auto target = std::find_if(
                     nucleus.rbegin(), nucleus.rend(),
                     [key](const auto &entry) { return entry.first == key; });
+                const bool isValidLateSuffix =
+                    (i + 1 == letters.size()) ||
+                    (i + 1 < letters.size() &&
+                     (isToneKey(static_cast<char>(std::tolower(
+                          static_cast<unsigned char>(letters[i + 1])))) ||
+                      static_cast<char>(std::tolower(
+                          static_cast<unsigned char>(letters[i + 1]))) == key));
                 if ((key == 'a' || key == 'e' || key == 'o') &&
                     isCompleteCoda(parsed.coda) && target != nucleus.rend() &&
-                    i + 1 == letters.size()) {
+                    isValidLateSuffix) {
                     parsed.shapeActions.push_back(
                         {letters[i], letterToRaw[i],
                          letterToRaw[target->second],
@@ -1083,12 +1092,12 @@ std::vector<RawSegment> splitRawSegments(const std::string &raw) {
                     (lower == 'a' || lower == 'e' || lower == 'o') &&
                     isCompleteCoda(coda) &&
                     nucleusBases.find(lower) != std::string::npos &&
-                    std::all_of(
-                        raw.begin() + static_cast<std::ptrdiff_t>(i + 1),
-                        raw.end(), [](char suffixKey) {
-                            return isToneKey(static_cast<char>(std::tolower(
-                                static_cast<unsigned char>(suffixKey))));
-                        });
+                    (i + 1 == raw.size() ||
+                     (i + 1 < raw.size() &&
+                      (isToneKey(static_cast<char>(std::tolower(
+                           static_cast<unsigned char>(raw[i + 1])))) ||
+                       static_cast<char>(std::tolower(
+                           static_cast<unsigned char>(raw[i + 1]))) == lower)));
                 if (canBeLateShapeModifier) {
                     // Free-order Telex: the repeated a/e/o may modify the
                     // matching nucleus through a complete coda (cana -> cân).
@@ -1569,6 +1578,9 @@ bool isPotentialVietnamesePrefixCells(const std::vector<Cell> &cells) {
             return false;
         }
         trailingConsonants.push_back(lowerAscii(cells[i].raw));
+    }
+    if (baseSequence == "y" && !trailingConsonants.empty()) {
+        return false;
     }
 
     static const std::vector<std::string> codaPrefixes = {
@@ -3491,6 +3503,12 @@ void UniikiEngine::finishDirectComposition(InputContext *ic, UniikiState &state,
 
 static std::string evaluateRawEscaped(const std::string &raw) {
     if (raw.empty()) return "";
+    const auto rawLower = lowerRaw(raw);
+    static const std::unordered_set<std::string> exactProtected = {
+        "class", "pass", "glass", "grass", "cross", "boss", "loss", "press", "dress", "express", "process",
+        "address", "add", "addd", "middleware"
+    };
+    if (exactProtected.count(rawLower)) return raw;
     static const std::unordered_set<char> escapedSet = {
         'd', 'w', 's', 'f', 'r', 'x', 'j', 'z'
     };
@@ -3688,8 +3706,9 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
                 const bool hasWConfirmation =
                     lowerSegment.find('w') != std::string::npos;
                 const bool hasDConfirmation = startsWith(lowerSegment, "dd");
+                const bool hasShapeConfirmation = !shape.shapeActions.empty();
                 if (!hasToneConfirmation && !hasWConfirmation &&
-                    !hasDConfirmation) {
+                    !hasDConfirmation && !hasShapeConfirmation) {
                     hasUnconfirmedShapeOnlySegment = true;
                 }
             }
@@ -3754,6 +3773,8 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
     std::vector<EscapedLiteral> escapedLiterals =
         toneLex.escapedLiterals;
     int activeTone = toneLex.history.activeTone;
+    bool shapeToggledOff = false;
+    bool tripleEscapeApplied = false;
     bool wModifierActive = false;
     bool wGeneratedVowel = false;
     bool wEscaped = false;
@@ -3831,6 +3852,7 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
             cells.push_back(rawCell(ch));
             cells.push_back(rawCell(letterRaw[i + 2]));
             i += 2;
+            tripleEscapeApplied = true;
             continue;
         }
 
@@ -3864,7 +3886,13 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
                 if (it->base == lower) {
                     if (ownsLateShapeAction(
                             i, trailingConsonants > 0)) {
-                        it->mark = 1;
+                        if (it->mark == 1) {
+                            it->mark = 0;
+                            cells.push_back(rawCell(ch));
+                            shapeToggledOff = true;
+                        } else {
+                            it->mark = 1;
+                        }
                         appliedLateMark = true;
                     }
                     break;
@@ -3981,13 +4009,21 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
             }
 
             if (uCellIdx != -1 && oCellIdx != -1) {
+                const bool hasTrailingConsonant = (static_cast<size_t>(oCellIdx) + 1 < cells.size());
                 wGeneratedVowel = false;
-                wModifiedMarks = {
-                    {static_cast<size_t>(uCellIdx), cells[uCellIdx].mark},
-                    {static_cast<size_t>(oCellIdx), cells[oCellIdx].mark},
-                };
-                cells[uCellIdx].mark = 3;
-                cells[oCellIdx].mark = 3;
+                if (hasTrailingConsonant) {
+                    wModifiedMarks = {
+                        {static_cast<size_t>(oCellIdx), cells[oCellIdx].mark},
+                    };
+                    cells[oCellIdx].mark = 3;
+                } else {
+                    wModifiedMarks = {
+                        {static_cast<size_t>(uCellIdx), cells[uCellIdx].mark},
+                        {static_cast<size_t>(oCellIdx), cells[oCellIdx].mark},
+                    };
+                    cells[uCellIdx].mark = 3;
+                    cells[oCellIdx].mark = 3;
+                }
                 wModifierActive = true;
                 wModifierKey = ch;
                 wModifierRawIndex = i;
@@ -4082,7 +4118,7 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
         for (const auto index : preToneParts.nucleusIndexes) {
             preToneBases.push_back(cells[index].base);
         }
-        if (preToneBases == "uo" && !preToneParts.coda.empty()) {
+        if (!wEscaped && preToneBases == "uo" && !preToneParts.coda.empty()) {
             bool plainUO = true;
             for (const auto index : preToneParts.nucleusIndexes) {
                 if (cells[index].mark != 0) {
@@ -4150,7 +4186,7 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
                      });
 
     if (candidate != raw && !shapeCandidate.shapeActions.empty() &&
-        !hasVietnameseMarkedCell(cells)) {
+        !hasVietnameseMarkedCell(cells) && !shapeToggledOff) {
         // A planned shape action that did not survive parsing must fall back
         // with all of its raw keys.  This prevents mixed ownership paths such
         // as cheese -> chee where a later tone-like letter was swallowed.
@@ -4162,13 +4198,10 @@ std::string UniikiEngine::evaluateTelexCore(const std::string &raw,
         // rather than leaking a partially collapsed ee/oo sequence.
         return evaluateRawEscaped(raw);
     }
-    if (!rawIsDRun && !wEscaped && !wGeneratedVowel && candidate != raw && hasVietnameseMarkedCell(cells) &&
-        !shapeCandidate.validVietnamese &&
-        activeTone == TONE_NONE && !isPotentialVietnamesePrefixCells(cells)) {
+    if (!rawIsDRun && !wEscaped && !wGeneratedVowel && candidate != raw &&
+        (!hasVietnameseMarkedCell(cells) || (!shapeCandidate.validVietnamese && activeTone != TONE_NONE)) &&
+        !shapeToggledOff && !tripleEscapeApplied && !isPotentialVietnamesePrefixCells(cells)) {
         if (!toneLex.escapedLiteralIndexes.empty()) {
-            // Reconstruct from ownership: clear the applied tone, retain
-            // literal/escaped cells, and never resurrect consumed modifiers
-            // by returning the original raw buffer.
             applyToneToCells(cells, TONE_NONE);
             return cellsText(cells);
         }
@@ -4258,7 +4291,9 @@ UniikiEngine::conversionWithProvenance(const std::string &raw) {
                 return deleted;
             }
         }
-        return std::vector<bool>(keys.size(), true);
+        std::vector<bool> deleted(keys.size(), false);
+        deleted.back() = true;
+        return deleted;
     };
 
     auto renderedGraphemes = splitCodePoints(result.rendered);
